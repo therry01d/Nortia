@@ -52,6 +52,7 @@ private fun LabelChip(text: String, color: Color, modifier: Modifier = Modifier)
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventCard(
     event: Event,
