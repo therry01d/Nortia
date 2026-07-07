@@ -18,6 +18,7 @@ import com.therry.nortia.R
 import com.therry.nortia.data.Event
 import com.therry.nortia.viewmodel.AgendaViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     val events by viewModel.events.collectAsState()
