@@ -59,27 +59,27 @@ class NortiaWidget : GlanceAppWidget() {
                     text = "Hoy",
                     style = TextStyle(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 32.sp,
                         color = ColorProvider(day = InkLight, night = InkDark)
                     )
                 )
-                Spacer(modifier = GlanceModifier.height(6.dp))
+                Spacer(modifier = GlanceModifier.height(10.dp))
                 if (items.isEmpty()) {
                     Text(
                         text = "Sin eventos hoy",
-                        style = TextStyle(fontSize = 13.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
+                        style = TextStyle(fontSize = 26.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
                     )
                 } else {
                     items.forEach { event ->
-                        Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                        Row(modifier = GlanceModifier.fillMaxWidth().padding(vertical = 5.dp)) {
                             Text(
                                 text = event.time?.let { to12h(it).let { (t, ap) -> "$t$ap" } } ?: "•",
-                                modifier = GlanceModifier.width(46.dp),
-                                style = TextStyle(fontSize = 12.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
+                                modifier = GlanceModifier.width(84.dp),
+                                style = TextStyle(fontSize = 24.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
                             )
                             Text(
                                 text = event.title,
-                                style = TextStyle(fontSize = 13.sp, color = ColorProvider(day = InkLight, night = InkDark))
+                                style = TextStyle(fontSize = 26.sp, color = ColorProvider(day = InkLight, night = InkDark))
                             )
                         }
                     }
