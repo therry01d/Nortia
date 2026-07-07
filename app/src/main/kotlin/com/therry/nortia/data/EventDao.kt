@@ -13,6 +13,9 @@ interface EventDao {
     @Query("SELECT * FROM events")
     fun getAll(): Flow<List<Event>>
 
+    @Query("SELECT * FROM events WHERE id = :id")
+    suspend fun getById(id: Int): Event?
+
     @Insert
     suspend fun insert(event: Event): Long
 

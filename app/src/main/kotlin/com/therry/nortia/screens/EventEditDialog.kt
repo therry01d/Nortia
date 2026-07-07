@@ -35,6 +35,7 @@ import com.therry.nortia.data.Category
 import com.therry.nortia.data.Event
 import com.therry.nortia.data.EventType
 import com.therry.nortia.data.Priority
+import com.therry.nortia.data.RepeatRule
 import com.therry.nortia.util.dateToCalendar
 import com.therry.nortia.util.formatDate
 import com.therry.nortia.util.formatTime
@@ -55,6 +56,7 @@ fun EventEditDialog(
     var time by remember { mutableStateOf(initial?.time ?: "") }
     var category by remember { mutableStateOf(initial?.category ?: Category.TRABAJO) }
     var priority by remember { mutableStateOf(initial?.priority ?: Priority.MEDIA) }
+    var repeat by remember { mutableStateOf(initial?.repeat ?: RepeatRule.NINGUNO) }
     var note by remember { mutableStateOf(initial?.note ?: "") }
     var remind by remember { mutableStateOf(initial?.remind ?: true) }
     var remindBefore by remember { mutableStateOf(initial?.remindBeforeMinutes ?: 10) }
@@ -128,6 +130,21 @@ fun EventEditDialog(
                     }
                 }
 
+                if (date.isNotBlank()) {
+                    FieldLabel(stringResource(R.string.field_repeat))
+                    OptionPicker(
+                        options = listOf(
+                            RepeatRule.NINGUNO to stringResource(R.string.repeat_none),
+                            RepeatRule.DIARIO to stringResource(R.string.repeat_daily),
+                            RepeatRule.SEMANAL to stringResource(R.string.repeat_weekly),
+                            RepeatRule.MENSUAL to stringResource(R.string.repeat_monthly),
+                            RepeatRule.ANUAL to stringResource(R.string.repeat_yearly)
+                        ),
+                        selected = repeat,
+                        onSelect = { repeat = it }
+                    )
+                }
+
                 FieldLabel(stringResource(R.string.field_category))
                 OptionPicker(
                     options = listOf(
@@ -199,6 +216,10 @@ fun EventEditDialog(
                     onValidationError(context.getString(R.string.error_reminder_needs_datetime))
                     return@save
                 }
+                if (repeat != RepeatRule.NINGUNO && date.isBlank()) {
+                    onValidationError(context.getString(R.string.error_repeat_needs_date))
+                    return@save
+                }
                 onSave(
                     (initial ?: Event(type = EventType.EVENTO, title = "", category = Category.TRABAJO)).copy(
                         type = type,
@@ -208,6 +229,7 @@ fun EventEditDialog(
                         category = category,
                         priority = if (type == EventType.TAREA) priority else null,
                         note = note.trim(),
+                        repeat = if (date.isNotBlank()) repeat else RepeatRule.NINGUNO,
                         remind = remind && date.isNotBlank(),
                         remindBeforeMinutes = remindBefore
                     )

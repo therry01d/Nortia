@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.therry.nortia.data.AppDatabase
 import com.therry.nortia.data.Event
+import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventRepository
 import com.therry.nortia.notifications.ReminderScheduler
 import kotlinx.coroutines.flow.SharingStarted
@@ -35,12 +36,20 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun toggleDone(event: Event) {
+    fun toggleDone(occurrence: EventOccurrence) {
         viewModelScope.launch {
-            val updated = event.copy(done = !event.done)
+            val event = occurrence.event
+            val date = occurrence.occurrenceDate
+            val nowDone = date !in event.completedDates
+            val newCompletedDates = if (nowDone) {
+                event.completedDates + date
+            } else {
+                event.completedDates - date
+            }
+            val updated = event.copy(completedDates = newCompletedDates)
             repository.updateEvent(updated)
-            if (updated.done) {
-                ReminderScheduler.cancel(getApplication(), updated)
+            if (nowDone) {
+                ReminderScheduler.scheduleNextAfterFiring(getApplication(), updated, date)
             } else {
                 ReminderScheduler.schedule(getApplication(), updated)
             }

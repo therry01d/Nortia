@@ -20,4 +20,16 @@ class Converters {
 
     @TypeConverter
     fun toPriority(value: String?): Priority? = value?.let { Priority.valueOf(it) }
+
+    @TypeConverter
+    fun fromRepeatRule(value: RepeatRule): String = value.name
+
+    @TypeConverter
+    fun toRepeatRule(value: String): RepeatRule = RepeatRule.valueOf(value)
+
+    @TypeConverter
+    fun fromDateSet(value: Set<String>): String = value.joinToString(",")
+
+    @TypeConverter
+    fun toDateSet(value: String): Set<String> = if (value.isBlank()) emptySet() else value.split(",").toSet()
 }

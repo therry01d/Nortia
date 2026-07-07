@@ -13,9 +13,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.therry.nortia.R
 import com.therry.nortia.data.Event
+import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventType
+import com.therry.nortia.data.RepeatRule
 import com.therry.nortia.ui.theme.PrioridadAlta
 import com.therry.nortia.util.nowTimeString
+import com.therry.nortia.util.occursOn
 import com.therry.nortia.util.todayString
 
 private enum class HoySection { ATRASADAS, HOY }
@@ -23,33 +26,38 @@ private enum class HoySection { ATRASADAS, HOY }
 private sealed interface HoyRow {
     data class SectionLabel(val section: HoySection) : HoyRow
     data object NowDivider : HoyRow
-    data class ItemRow(val event: Event) : HoyRow
+    data class ItemRow(val occurrence: EventOccurrence) : HoyRow
 }
 
 private fun buildHoyRows(events: List<Event>, today: String, nowTime: String): List<HoyRow> {
-    val list = events
-        .filter { it.date == today }
-        .filterNot { it.type == EventType.TAREA && it.done }
+    val todays = events
+        .filter { occursOn(it, today) }
+        .filterNot { it.type == EventType.TAREA && today in it.completedDates }
+        .map { EventOccurrence(it, today) }
     val overdue = events
-        .filter { it.type == EventType.TAREA && !it.done && it.date != null && it.date < today }
+        .filter {
+            it.type == EventType.TAREA && it.repeat == RepeatRule.NINGUNO &&
+                it.date != null && it.date < today && it.date !in it.completedDates
+        }
         .sortedBy { it.date }
+        .map { EventOccurrence(it, it.date!!) }
 
-    if (list.isEmpty() && overdue.isEmpty()) return emptyList()
+    if (todays.isEmpty() && overdue.isEmpty()) return emptyList()
 
     val rows = mutableListOf<HoyRow>()
     if (overdue.isNotEmpty()) {
         rows += HoyRow.SectionLabel(HoySection.ATRASADAS)
         overdue.forEach { rows += HoyRow.ItemRow(it) }
     }
-    val timed = list.filter { it.time != null }.sortedBy { it.time }
-    val untimed = list.filter { it.time == null }
+    val timed = todays.filter { it.event.time != null }.sortedBy { it.event.time }
+    val untimed = todays.filter { it.event.time == null }
 
     rows += HoyRow.SectionLabel(HoySection.HOY)
     untimed.forEach { rows += HoyRow.ItemRow(it) }
 
     var placed = false
     timed.forEach {
-        if (!placed && it.time!! > nowTime) {
+        if (!placed && it.event.time!! > nowTime) {
             rows += HoyRow.NowDivider
             placed = true
         }
@@ -65,7 +73,7 @@ private fun buildHoyRows(events: List<Event>, today: String, nowTime: String): L
 fun HoyScreen(
     events: List<Event>,
     onOpen: (Event) -> Unit,
-    onToggleDone: (Event) -> Unit,
+    onToggleDone: (EventOccurrence) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = todayString()
@@ -110,9 +118,9 @@ fun HoyScreen(
                     )
                 }
                 is HoyRow.ItemRow -> EventCard(
-                    event = row.event,
-                    onOpen = { onOpen(row.event) },
-                    onToggleDone = { onToggleDone(row.event) }
+                    occurrence = row.occurrence,
+                    onOpen = { onOpen(row.occurrence.event) },
+                    onToggleDone = { onToggleDone(row.occurrence) }
                 )
             }
         }

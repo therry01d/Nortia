@@ -59,8 +59,16 @@
     <string name="field_priority">Prioridad</string>
     <string name="field_note">Nota (opcional)</string>
     <string name="field_note_hint">Detalles…</string>
+    <string name="field_repeat">Repetir</string>
     <string name="field_remind">Recordarme</string>
     <string name="field_remind_before">Avisarme</string>
+
+    <string name="repeat_none">No repetir</string>
+    <string name="repeat_daily">Diario</string>
+    <string name="repeat_weekly">Semanal</string>
+    <string name="repeat_monthly">Mensual</string>
+    <string name="repeat_yearly">Anual</string>
+    <string name="error_repeat_needs_date">Elegí una fecha para poder repetir</string>
 
     <string name="remind_at_time">A la hora exacta</string>
     <string name="remind_5">5 min antes</string>

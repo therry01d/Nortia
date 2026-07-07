@@ -14,9 +14,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.therry.nortia.R
 import com.therry.nortia.data.Category
-import com.therry.nortia.data.Event
+import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventType
 import com.therry.nortia.data.Priority
+import com.therry.nortia.data.RepeatRule
 import com.therry.nortia.ui.theme.CategoriaPersonal
 import com.therry.nortia.ui.theme.CategoriaTrabajo
 import com.therry.nortia.ui.theme.PrioridadAlta
@@ -55,12 +56,13 @@ private fun LabelChip(text: String, color: Color, modifier: Modifier = Modifier)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventCard(
-    event: Event,
+    occurrence: EventOccurrence,
     onOpen: () -> Unit,
     onToggleDone: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val done = event.type == EventType.TAREA && event.done
+    val event = occurrence.event
+    val done = occurrence.isDone
     Card(
         onClick = onOpen,
         modifier = modifier.fillMaxWidth(),
@@ -82,7 +84,7 @@ fun EventCard(
             )
 
             if (event.type == EventType.TAREA) {
-                Checkbox(checked = event.done, onCheckedChange = { onToggleDone() })
+                Checkbox(checked = done, onCheckedChange = { onToggleDone() })
             } else {
                 val time = event.time
                 Column(
@@ -131,6 +133,9 @@ fun EventCard(
                     }
                     if (event.remind) {
                         Text("🔔", style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (event.repeat != RepeatRule.NINGUNO) {
+                        Text("🔁", style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 if (event.note.isNotBlank()) {

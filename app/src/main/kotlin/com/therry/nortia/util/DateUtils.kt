@@ -56,6 +56,12 @@ fun firstWeekdayMondayIndex(year: Int, month0: Int): Int {
     return (sundayIndexed + 6) % 7
 }
 
+fun addDays(dateStr: String, days: Int): String {
+    val c = dateToCalendar(dateStr)
+    c.add(Calendar.DAY_OF_MONTH, days)
+    return formatDate(c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH))
+}
+
 fun to12h(time: String): Pair<String, String> {
     val (h, m) = time.split(":").map { it.toInt() }
     val ampm = if (h < 12) "am" else "pm"

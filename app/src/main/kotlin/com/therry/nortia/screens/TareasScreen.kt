@@ -15,14 +15,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.therry.nortia.R
 import com.therry.nortia.data.Event
+import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventType
 import com.therry.nortia.data.Priority
+import com.therry.nortia.data.RepeatRule
 import com.therry.nortia.ui.theme.PrioridadAlta
+import com.therry.nortia.util.nextOccurrenceOnOrAfter
 import com.therry.nortia.util.todayString
 
 enum class TareaFilter { PENDIENTES, HOY, HECHAS }
 
 private enum class TareaGroup { ATRASADAS, SIN_FECHA, HOY, PROXIMAS, COMPLETADAS }
+
+private const val NO_DATE_SENTINEL = ""
+private const val SORT_FALLBACK = "9999-99-99"
 
 private fun priorityRank(priority: Priority?): Int = when (priority) {
     Priority.ALTA -> 0
@@ -31,38 +37,53 @@ private fun priorityRank(priority: Priority?): Int = when (priority) {
     null -> 3
 }
 
-private fun groupOf(event: Event, today: String): TareaGroup = when {
-    event.done -> TareaGroup.COMPLETADAS
-    event.date == null -> TareaGroup.SIN_FECHA
-    event.date < today -> TareaGroup.ATRASADAS
-    event.date == today -> TareaGroup.HOY
+private fun representativeOccurrence(event: Event, today: String): EventOccurrence {
+    val date = event.date
+    val occurrenceDate = when {
+        date == null -> NO_DATE_SENTINEL
+        event.repeat == RepeatRule.NINGUNO -> date
+        else -> nextOccurrenceOnOrAfter(event, today) ?: date
+    }
+    return EventOccurrence(event, occurrenceDate)
+}
+
+private fun groupOf(occurrence: EventOccurrence, today: String): TareaGroup = when {
+    occurrence.isDone -> TareaGroup.COMPLETADAS
+    occurrence.event.date == null -> TareaGroup.SIN_FECHA
+    occurrence.occurrenceDate < today -> TareaGroup.ATRASADAS
+    occurrence.occurrenceDate == today -> TareaGroup.HOY
     else -> TareaGroup.PROXIMAS
 }
 
 private sealed interface TareaRow {
     data class SectionLabel(val group: TareaGroup) : TareaRow
-    data class ItemRow(val event: Event) : TareaRow
+    data class ItemRow(val occurrence: EventOccurrence) : TareaRow
 }
 
 private fun buildTareaRows(events: List<Event>, filter: TareaFilter, today: String): List<TareaRow> {
-    var tareas = events.filter { it.type == EventType.TAREA }
-    tareas = when (filter) {
-        TareaFilter.PENDIENTES -> tareas.filter { !it.done }
-        TareaFilter.HOY -> tareas.filter { !it.done && it.date == today }
-        TareaFilter.HECHAS -> tareas.filter { it.done }
+    var occurrences = events
+        .filter { it.type == EventType.TAREA }
+        .map { representativeOccurrence(it, today) }
+    occurrences = when (filter) {
+        TareaFilter.PENDIENTES -> occurrences.filter { !it.isDone }
+        TareaFilter.HOY -> occurrences.filter { !it.isDone && it.occurrenceDate == today }
+        TareaFilter.HECHAS -> occurrences.filter { it.isDone }
     }
-    val sorted = tareas.sortedWith(
-        compareBy({ it.date ?: "9999-99-99" }, { priorityRank(it.priority) })
+    val sorted = occurrences.sortedWith(
+        compareBy(
+            { it.occurrenceDate.ifBlank { SORT_FALLBACK } },
+            { priorityRank(it.event.priority) }
+        )
     )
     val rows = mutableListOf<TareaRow>()
     var lastGroup: TareaGroup? = null
-    sorted.forEach { event ->
-        val group = groupOf(event, today)
+    sorted.forEach { occurrence ->
+        val group = groupOf(occurrence, today)
         if (group != lastGroup) {
             rows += TareaRow.SectionLabel(group)
             lastGroup = group
         }
-        rows += TareaRow.ItemRow(event)
+        rows += TareaRow.ItemRow(occurrence)
     }
     return rows
 }
@@ -82,7 +103,7 @@ fun TareasScreen(
     filter: TareaFilter,
     onFilterChange: (TareaFilter) -> Unit,
     onOpen: (Event) -> Unit,
-    onToggleDone: (Event) -> Unit,
+    onToggleDone: (EventOccurrence) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = todayString()
@@ -136,9 +157,9 @@ fun TareasScreen(
                             color = if (row.group == TareaGroup.ATRASADAS) PrioridadAlta else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         is TareaRow.ItemRow -> EventCard(
-                            event = row.event,
-                            onOpen = { onOpen(row.event) },
-                            onToggleDone = { onToggleDone(row.event) }
+                            occurrence = row.occurrence,
+                            onOpen = { onOpen(row.occurrence.event) },
+                            onToggleDone = { onToggleDone(row.occurrence) }
                         )
                     }
                 }

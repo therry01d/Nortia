@@ -35,14 +35,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.therry.nortia.R
-import com.therry.nortia.data.Category
 import com.therry.nortia.data.Event
+import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.util.dateToCalendar
 import com.therry.nortia.util.daysInMonth
 import com.therry.nortia.util.firstWeekdayMondayIndex
 import com.therry.nortia.util.formatDate
 import com.therry.nortia.util.formatDateLong
 import com.therry.nortia.util.monthYearLabel
+import com.therry.nortia.util.occursOn
 import com.therry.nortia.util.todayString
 import java.util.Calendar
 
@@ -67,21 +68,19 @@ private fun buildCalendarCells(
     val prevMonth0 = if (month0 == 0) 11 else month0 - 1
     val prevDays = daysInMonth(prevYear, prevMonth0)
 
-    val marks = mutableMapOf<String, MutableSet<Category>>()
-    events.forEach { e -> e.date?.let { d -> marks.getOrPut(d) { mutableSetOf() }.add(e.category) } }
-
     val cells = mutableListOf<CalCell>()
     for (i in 0 until start) {
         cells += CalCell(prevDays - start + 1 + i, null, false, false, emptyList())
     }
     for (d in 1..daysInM) {
         val key = formatDate(year, month0, d)
+        val dotColors = events.filter { occursOn(it, key) }.map { categoryColor(it.category) }.distinct()
         cells += CalCell(
             day = d,
             dateKey = key,
             isToday = key == today,
             isSelected = key == selected,
-            dotColors = marks[key]?.map { categoryColor(it) } ?: emptyList()
+            dotColors = dotColors
         )
     }
     val total = start + daysInM
@@ -98,7 +97,7 @@ fun CalendarioScreen(
     selectedDay: String,
     onSelectedDayChange: (String) -> Unit,
     onOpen: (Event) -> Unit,
-    onToggleDone: (Event) -> Unit,
+    onToggleDone: (EventOccurrence) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val today = todayString()
@@ -109,7 +108,10 @@ fun CalendarioScreen(
     val cells = remember(year, month, events, selectedDay, today) {
         buildCalendarCells(year, month, today, selectedDay, events)
     }
-    val dayItems = events.filter { it.date == selectedDay }.sortedBy { it.time ?: "99:99" }
+    val dayItems = events
+        .filter { occursOn(it, selectedDay) }
+        .sortedBy { it.time ?: "99:99" }
+        .map { EventOccurrence(it, selectedDay) }
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
@@ -176,11 +178,11 @@ fun CalendarioScreen(
                 contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(dayItems) { event ->
+                items(dayItems) { occurrence ->
                     EventCard(
-                        event = event,
-                        onOpen = { onOpen(event) },
-                        onToggleDone = { onToggleDone(event) }
+                        occurrence = occurrence,
+                        onOpen = { onOpen(occurrence.event) },
+                        onToggleDone = { onToggleDone(occurrence) }
                     )
                 }
             }

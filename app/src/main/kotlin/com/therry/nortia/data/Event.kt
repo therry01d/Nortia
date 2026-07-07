@@ -14,7 +14,8 @@ data class Event(
     val category: Category,
     val priority: Priority? = null,
     val note: String = "",
-    val done: Boolean = false,
+    val repeat: RepeatRule = RepeatRule.NINGUNO,
+    val completedDates: Set<String> = emptySet(),
     val remind: Boolean = false,
     val remindBeforeMinutes: Int = 10,
     val createdAt: Long = System.currentTimeMillis()

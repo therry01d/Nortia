@@ -10,7 +10,11 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.therry.nortia.R
 import com.therry.nortia.data.Event
+import com.therry.nortia.data.RepeatRule
+import com.therry.nortia.util.addDays
 import com.therry.nortia.util.dateToCalendar
+import com.therry.nortia.util.nextOccurrenceOnOrAfter
+import com.therry.nortia.util.todayString
 import java.util.Calendar
 import java.util.concurrent.TimeUnit
 
@@ -30,17 +34,45 @@ object ReminderScheduler {
         manager.createNotificationChannel(channel)
     }
 
+    /** Programa el recordatorio para la próxima ocurrencia del evento a partir de hoy. */
     fun schedule(context: Context, event: Event) {
+        if (!event.remind) {
+            cancel(context, event)
+            return
+        }
+        val targetDate = nextOccurrenceOnOrAfter(event, todayString())
+        if (targetDate == null) {
+            cancel(context, event)
+            return
+        }
+        scheduleForDate(context, event, targetDate)
+    }
+
+    /** Programa el recordatorio para la ocurrencia siguiente a la que recién sonó. */
+    fun scheduleNextAfterFiring(context: Context, event: Event, firedDate: String) {
+        if (!event.remind || event.repeat == RepeatRule.NINGUNO) {
+            cancel(context, event)
+            return
+        }
+        val next = nextOccurrenceOnOrAfter(event, addDays(firedDate, 1))
+        if (next == null) {
+            cancel(context, event)
+            return
+        }
+        scheduleForDate(context, event, next)
+    }
+
+    private fun scheduleForDate(context: Context, event: Event, occurrenceDate: String) {
         cancel(context, event)
-        if (!event.remind) return
-        val fireAt = fireTimeMillis(event) ?: return
+        val fireAt = fireTimeMillis(event, occurrenceDate) ?: return
         val delay = fireAt - System.currentTimeMillis()
         if (delay <= 0) return
 
         val data = workDataOf(
+            ReminderWorker.KEY_EVENT_ID to event.id,
+            ReminderWorker.KEY_OCCURRENCE_DATE to occurrenceDate,
             ReminderWorker.KEY_TITLE to event.title,
-            ReminderWorker.KEY_BODY to buildBody(event),
-            ReminderWorker.KEY_NOTIFICATION_ID to event.id
+            ReminderWorker.KEY_BODY to buildBody(event)
         )
         val request = OneTimeWorkRequestBuilder<ReminderWorker>()
             .setInitialDelay(delay, TimeUnit.MILLISECONDS)
@@ -56,11 +88,10 @@ object ReminderScheduler {
 
     private fun uniqueName(id: Int) = "reminder_$id"
 
-    private fun fireTimeMillis(event: Event): Long? {
-        val date = event.date ?: return null
+    private fun fireTimeMillis(event: Event, occurrenceDate: String): Long? {
         val time = event.time ?: "09:00"
         val (hour, minute) = time.split(":").map { it.toInt() }
-        val cal = dateToCalendar(date)
+        val cal = dateToCalendar(occurrenceDate)
         cal.set(Calendar.HOUR_OF_DAY, hour)
         cal.set(Calendar.MINUTE, minute)
         cal.set(Calendar.SECOND, 0)
