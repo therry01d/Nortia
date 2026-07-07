@@ -72,6 +72,9 @@ dependencies {
     // Backup / exportar-importar datos
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // Widget de pantalla de inicio
+    implementation("androidx.glance:glance-appwidget:1.0.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")

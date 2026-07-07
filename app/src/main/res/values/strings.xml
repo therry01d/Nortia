@@ -98,4 +98,7 @@
 
     <string name="notif_channel_name">Recordatorios</string>
     <string name="notif_channel_description">Avisos de eventos, tareas y recordatorios de Nortia</string>
+
+    <string name="widget_label">Nortia - Hoy</string>
+    <string name="widget_description">Muestra la agenda de hoy en la pantalla de inicio.</string>
 </resources>

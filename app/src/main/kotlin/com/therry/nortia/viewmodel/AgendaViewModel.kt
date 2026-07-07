@@ -1,6 +1,7 @@
 package com.therry.nortia.viewmodel
 
 import android.app.Application
+import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.therry.nortia.data.AppDatabase
@@ -8,6 +9,7 @@ import com.therry.nortia.data.Event
 import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventRepository
 import com.therry.nortia.notifications.ReminderScheduler
+import com.therry.nortia.widget.NortiaWidget
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -23,6 +25,10 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyList()
     )
 
+    private suspend fun refreshWidget() {
+        NortiaWidget().updateAll(getApplication())
+    }
+
     fun save(event: Event) {
         viewModelScope.launch {
             val saved = if (event.id == 0) {
@@ -33,6 +39,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
                 event
             }
             ReminderScheduler.schedule(getApplication(), saved)
+            refreshWidget()
         }
     }
 
@@ -53,6 +60,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
             } else {
                 ReminderScheduler.schedule(getApplication(), updated)
             }
+            refreshWidget()
         }
     }
 
@@ -60,6 +68,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             ReminderScheduler.cancel(getApplication(), event)
             repository.removeEvent(event)
+            refreshWidget()
         }
     }
 
@@ -71,6 +80,7 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
                 val saved = event.copy(id = newId.toInt())
                 ReminderScheduler.schedule(getApplication(), saved)
             }
+            refreshWidget()
         }
     }
 }
