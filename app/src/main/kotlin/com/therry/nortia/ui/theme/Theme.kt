@@ -15,22 +15,58 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightColorScheme = lightColorScheme(
+    primary = AccentLight,
+    onPrimary = OnAccentLight,
+    primaryContainer = AccentSoftLight,
+    onPrimaryContainer = AccentLight,
+    secondary = PersonalLight,
+    onSecondary = OnAccentLight,
+    secondaryContainer = PersonalSoftLight,
+    onSecondaryContainer = PersonalLight,
+    tertiary = PrioridadMedia,
+    background = BackgroundLight,
+    onBackground = InkLight,
+    surface = SurfaceLight,
+    onSurface = InkLight,
+    surfaceVariant = BackgroundLight,
+    onSurfaceVariant = MutedLight,
+    outline = HairlineLight,
+    outlineVariant = HairlineLight,
+    error = PrioridadAlta,
+    onError = OnAccentLight,
+    errorContainer = AltaSoftLight,
+    onErrorContainer = PrioridadAlta
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+private val DarkColorScheme = darkColorScheme(
+    primary = AccentDark,
+    onPrimary = OnAccentDark,
+    primaryContainer = AccentSoftDark,
+    onPrimaryContainer = AccentDark,
+    secondary = PersonalDark,
+    onSecondary = OnAccentDark,
+    secondaryContainer = PersonalSoftDark,
+    onSecondaryContainer = PersonalDark,
+    tertiary = PrioridadMedia,
+    background = BackgroundDark,
+    onBackground = InkDark,
+    surface = SurfaceDark,
+    onSurface = InkDark,
+    surfaceVariant = SurfaceDark,
+    onSurfaceVariant = MutedDark,
+    outline = HairlineDark,
+    outlineVariant = HairlineDark,
+    error = PrioridadAlta,
+    onError = OnAccentDark,
+    errorContainer = AltaSoftDark,
+    onErrorContainer = PrioridadAlta
 )
 
 @Composable
 fun NortiaTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
@@ -45,7 +81,7 @@ fun NortiaTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
+            window.statusBarColor = colorScheme.surface.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
@@ -53,6 +89,7 @@ fun NortiaTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = Shapes,
         content = content
     )
 }
