@@ -62,4 +62,15 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
             repository.removeEvent(event)
         }
     }
+
+    /** Agrega los eventos importados como filas nuevas (no reemplaza los existentes). */
+    fun importEvents(imported: List<Event>) {
+        viewModelScope.launch {
+            imported.forEach { event ->
+                val newId = repository.addEvent(event.copy(id = 0))
+                val saved = event.copy(id = newId.toInt())
+                ReminderScheduler.schedule(getApplication(), saved)
+            }
+        }
+    }
 }

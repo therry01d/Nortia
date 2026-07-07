@@ -1,5 +1,7 @@
 package com.therry.nortia.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -8,6 +10,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -25,9 +28,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.therry.nortia.R
+import com.therry.nortia.backup.BackupManager
 import com.therry.nortia.data.Event
 import com.therry.nortia.util.todayString
 import com.therry.nortia.viewmodel.AgendaViewModel
@@ -53,10 +58,59 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     val savedMsg = stringResource(R.string.toast_saved)
     val deletedMsg = stringResource(R.string.toast_deleted)
 
+    val context = LocalContext.current
+    val exportedMsg = stringResource(R.string.toast_exported)
+    val exportErrorMsg = stringResource(R.string.error_export_failed)
+    val importErrorMsg = stringResource(R.string.error_import_failed)
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val ok = runCatching {
+                    val json = BackupManager.exportJson(events)
+                    context.contentResolver.openOutputStream(uri)?.use { it.write(json.toByteArray()) }
+                }.isSuccess
+                showMessage(if (ok) exportedMsg else exportErrorMsg)
+            }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val result = runCatching {
+                    val json = context.contentResolver.openInputStream(uri)
+                        ?.bufferedReader()?.use { it.readText() }
+                        ?: error("no content")
+                    BackupManager.importJson(json)
+                }
+                result.onSuccess { imported ->
+                    viewModel.importEvents(imported)
+                    showMessage(context.getString(R.string.toast_imported, imported.size))
+                }.onFailure {
+                    showMessage(importErrorMsg)
+                }
+            }
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.app_name)) })
+            TopAppBar(
+                title = { Text(stringResource(R.string.app_name)) },
+                actions = {
+                    IconButton(onClick = { exportLauncher.launch("nortia-backup-${todayString()}.json") }) {
+                        Text("⬇️")
+                    }
+                    IconButton(onClick = { importLauncher.launch(arrayOf("application/json")) }) {
+                        Text("⬆️")
+                    }
+                }
+            )
         },
         bottomBar = {
             val navColors = NavigationBarItemDefaults.colors(
