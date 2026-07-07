@@ -1,6 +1,7 @@
 package com.therry.nortia.widget
 
 import android.content.Context
+import android.content.Intent
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -25,7 +26,9 @@ import androidx.glance.text.TextStyle
 import com.therry.nortia.MainActivity
 import com.therry.nortia.data.AppDatabase
 import com.therry.nortia.data.EventType
+import com.therry.nortia.ui.theme.InkDark
 import com.therry.nortia.ui.theme.InkLight
+import com.therry.nortia.ui.theme.MutedDark
 import com.therry.nortia.ui.theme.MutedLight
 import com.therry.nortia.ui.theme.SurfaceLight
 import com.therry.nortia.util.occursOn
@@ -50,17 +53,21 @@ class NortiaWidget : GlanceAppWidget() {
                     .fillMaxSize()
                     .background(SurfaceLight)
                     .padding(12.dp)
-                    .clickable(actionStartActivity<MainActivity>())
+                    .clickable(actionStartActivity(Intent(context, MainActivity::class.java)))
             ) {
                 Text(
                     text = "Hoy",
-                    style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, color = ColorProvider(InkLight))
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = ColorProvider(day = InkLight, night = InkDark)
+                    )
                 )
                 Spacer(modifier = GlanceModifier.height(6.dp))
                 if (items.isEmpty()) {
                     Text(
                         text = "Sin eventos hoy",
-                        style = TextStyle(fontSize = 13.sp, color = ColorProvider(MutedLight))
+                        style = TextStyle(fontSize = 13.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
                     )
                 } else {
                     items.forEach { event ->
@@ -68,11 +75,11 @@ class NortiaWidget : GlanceAppWidget() {
                             Text(
                                 text = event.time?.let { to12h(it).let { (t, ap) -> "$t$ap" } } ?: "•",
                                 modifier = GlanceModifier.width(46.dp),
-                                style = TextStyle(fontSize = 12.sp, color = ColorProvider(MutedLight))
+                                style = TextStyle(fontSize = 12.sp, color = ColorProvider(day = MutedLight, night = MutedDark))
                             )
                             Text(
                                 text = event.title,
-                                style = TextStyle(fontSize = 13.sp, color = ColorProvider(InkLight))
+                                style = TextStyle(fontSize = 13.sp, color = ColorProvider(day = InkLight, night = InkDark))
                             )
                         }
                     }
