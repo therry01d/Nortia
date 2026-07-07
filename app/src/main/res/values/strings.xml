@@ -1,16 +1,75 @@
 <resources>
     <string name="app_name">Nortia</string>
 
-    <string name="agenda_title">Nortia - Mi Agenda</string>
-    <string name="agenda_empty">No hay eventos. ¡Agrega uno!</string>
-    <string name="agenda_add_event_content_description">Agregar evento</string>
-    <string name="agenda_delete_event_content_description">Eliminar</string>
-    <string name="agenda_event_time">Hora: %1$s</string>
+    <string name="tab_hoy">Hoy</string>
+    <string name="tab_calendario">Calendario</string>
+    <string name="tab_tareas">Tareas</string>
 
-    <string name="dialog_add_event_title">Agregar Evento</string>
-    <string name="dialog_field_title">Título</string>
-    <string name="dialog_field_description">Descripción</string>
-    <string name="dialog_field_time">Hora (HH:mm)</string>
+    <string name="type_evento">Evento</string>
+    <string name="type_tarea">Tarea</string>
+    <string name="type_recordatorio">Recordatorio</string>
+
+    <string name="category_trabajo">Trabajo</string>
+    <string name="category_personal">Personal</string>
+
+    <string name="priority_alta">Alta</string>
+    <string name="priority_media">Media</string>
+    <string name="priority_baja">Baja</string>
+
+    <string name="section_atrasadas">Atrasadas</string>
+    <string name="section_hoy">Hoy</string>
+    <string name="section_proximas">Próximas</string>
+    <string name="section_completadas">Completadas</string>
+    <string name="section_sin_fecha">Sin fecha</string>
+    <string name="section_ahora">Ahora</string>
+
+    <string name="hoy_empty_title">Día despejado</string>
+    <string name="hoy_empty_subtitle">No tienes nada agendado hoy. Toca + para agregar algo.</string>
+
+    <string name="filter_pendientes">Pendientes</string>
+    <string name="filter_hoy">Hoy</string>
+    <string name="filter_hechas">Hechas</string>
+    <string name="tareas_empty_pend_title">Sin tareas</string>
+    <string name="tareas_empty_pend_subtitle">Toca + para crear una tarea.</string>
+    <string name="tareas_empty_hechas_title">Aún nada completado</string>
+    <string name="tareas_empty_hechas_subtitle">Las tareas terminadas aparecen aquí.</string>
+
+    <string name="calendario_placeholder_title">Muy pronto</string>
+    <string name="calendario_placeholder_subtitle">La vista de calendario está en camino.</string>
+
+    <string name="dialog_new_title">Nuevo</string>
+    <string name="dialog_edit_title">Editar</string>
+    <string name="field_type">Tipo</string>
+    <string name="field_title">Título</string>
+    <string name="field_title_hint">¿Qué es?</string>
+    <string name="field_date">Fecha</string>
+    <string name="field_time">Hora</string>
+    <string name="field_category">Categoría</string>
+    <string name="field_priority">Prioridad</string>
+    <string name="field_note">Nota (opcional)</string>
+    <string name="field_note_hint">Detalles…</string>
+    <string name="field_remind">Recordarme</string>
+    <string name="field_remind_before">Avisarme</string>
+
+    <string name="remind_at_time">A la hora exacta</string>
+    <string name="remind_5">5 min antes</string>
+    <string name="remind_10">10 min antes</string>
+    <string name="remind_30">30 min antes</string>
+    <string name="remind_60">1 hora antes</string>
+    <string name="remind_1440">1 día antes</string>
+
     <string name="dialog_save">Guardar</string>
     <string name="dialog_cancel">Cancelar</string>
+    <string name="dialog_delete">Eliminar</string>
+
+    <string name="error_missing_title">Ponle un título</string>
+    <string name="error_reminder_needs_datetime">El recordatorio necesita fecha y hora</string>
+    <string name="toast_saved">Guardado</string>
+    <string name="toast_deleted">Eliminado</string>
+
+    <string name="cd_add">Agregar</string>
+    <string name="cd_delete">Eliminar</string>
+    <string name="cd_reminder">Recordatorio activado</string>
+    <string name="allday_tarea">Tarea</string>
+    <string name="allday_generic">Todo el día</string>
 </resources>

@@ -7,8 +7,15 @@ import androidx.room.PrimaryKey
 data class Event(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
+    val type: EventType,
     val title: String,
-    val description: String,
-    val date: Long,
-    val time: String
+    val date: String? = null,
+    val time: String? = null,
+    val category: Category,
+    val priority: Priority? = null,
+    val note: String = "",
+    val done: Boolean = false,
+    val remind: Boolean = false,
+    val remindBeforeMinutes: Int = 10,
+    val createdAt: Long = System.currentTimeMillis()
 )

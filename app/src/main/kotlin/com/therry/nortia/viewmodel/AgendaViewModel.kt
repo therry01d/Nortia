@@ -21,20 +21,19 @@ class AgendaViewModel(application: Application) : AndroidViewModel(application) 
         initialValue = emptyList()
     )
 
-    fun addEvent(title: String, description: String, time: String) {
+    fun save(event: Event) {
         viewModelScope.launch {
-            repository.addEvent(
-                Event(
-                    title = title,
-                    description = description,
-                    date = System.currentTimeMillis(),
-                    time = time
-                )
-            )
+            if (event.id == 0) repository.addEvent(event) else repository.updateEvent(event)
         }
     }
 
-    fun deleteEvent(event: Event) {
+    fun toggleDone(event: Event) {
+        viewModelScope.launch {
+            repository.updateEvent(event.copy(done = !event.done))
+        }
+    }
+
+    fun delete(event: Event) {
         viewModelScope.launch {
             repository.removeEvent(event)
         }

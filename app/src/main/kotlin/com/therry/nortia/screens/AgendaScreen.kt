@@ -1,179 +1,129 @@
 package com.therry.nortia.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.therry.nortia.R
 import com.therry.nortia.data.Event
+import com.therry.nortia.util.todayString
 import com.therry.nortia.viewmodel.AgendaViewModel
+import kotlinx.coroutines.launch
+
+private enum class AgendaTab { HOY, CALENDARIO, TAREAS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     val events by viewModel.events.collectAsState()
+    var tab by remember { mutableStateOf(AgendaTab.HOY) }
+    var tareaFilter by remember { mutableStateOf(TareaFilter.PENDIENTES) }
+    var editingEvent by remember { mutableStateOf<Event?>(null) }
     var showDialog by remember { mutableStateOf(false) }
-    var titleInput by remember { mutableStateOf(TextFieldValue("")) }
-    var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
-    var timeInput by remember { mutableStateOf(TextFieldValue("")) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    fun showMessage(msg: String) {
+        scope.launch { snackbarHostState.showSnackbar(msg) }
+    }
+    val savedMsg = stringResource(R.string.toast_saved)
+    val deletedMsg = stringResource(R.string.toast_deleted)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.agenda_title)) }
-            )
+            TopAppBar(title = { Text(stringResource(R.string.app_name)) })
+        },
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = tab == AgendaTab.HOY,
+                    onClick = { tab = AgendaTab.HOY },
+                    icon = { Text("☀️") },
+                    label = { Text(stringResource(R.string.tab_hoy)) }
+                )
+                NavigationBarItem(
+                    selected = tab == AgendaTab.CALENDARIO,
+                    onClick = { tab = AgendaTab.CALENDARIO },
+                    icon = { Text("🗓️") },
+                    label = { Text(stringResource(R.string.tab_calendario)) }
+                )
+                NavigationBarItem(
+                    selected = tab == AgendaTab.TAREAS,
+                    onClick = { tab = AgendaTab.TAREAS },
+                    icon = { Text("✓") },
+                    label = { Text(stringResource(R.string.tab_tareas)) }
+                )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showDialog = true }
-            ) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = stringResource(R.string.agenda_add_event_content_description)
+            FloatingActionButton(onClick = { editingEvent = null; showDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.cd_add))
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+        ) {
+            when (tab) {
+                AgendaTab.HOY -> HoyScreen(
+                    events = events,
+                    onOpen = { editingEvent = it; showDialog = true },
+                    onToggleDone = viewModel::toggleDone
+                )
+                AgendaTab.CALENDARIO -> CalendarioScreen()
+                AgendaTab.TAREAS -> TareasScreen(
+                    events = events,
+                    filter = tareaFilter,
+                    onFilterChange = { tareaFilter = it },
+                    onOpen = { editingEvent = it; showDialog = true },
+                    onToggleDone = viewModel::toggleDone
                 )
             }
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (events.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
-                ) {
-                    Text(stringResource(R.string.agenda_empty))
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(events) { event ->
-                        EventCard(
-                            event = event,
-                            onDelete = { viewModel.deleteEvent(event) }
-                        )
-                    }
-                }
-            }
-        }
-
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text(stringResource(R.string.dialog_add_event_title)) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        TextField(
-                            value = titleInput,
-                            onValueChange = { titleInput = it },
-                            label = { Text(stringResource(R.string.dialog_field_title)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        TextField(
-                            value = descriptionInput,
-                            onValueChange = { descriptionInput = it },
-                            label = { Text(stringResource(R.string.dialog_field_description)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        TextField(
-                            value = timeInput,
-                            onValueChange = { timeInput = it },
-                            label = { Text(stringResource(R.string.dialog_field_time)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (titleInput.text.isNotBlank()) {
-                                viewModel.addEvent(
-                                    title = titleInput.text,
-                                    description = descriptionInput.text,
-                                    time = timeInput.text.ifBlank { "00:00" }
-                                )
-                                titleInput = TextFieldValue("")
-                                descriptionInput = TextFieldValue("")
-                                timeInput = TextFieldValue("")
-                                showDialog = false
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.dialog_save))
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) {
-                        Text(stringResource(R.string.dialog_cancel))
-                    }
-                }
-            )
         }
     }
-}
 
-@Composable
-fun EventCard(
-    event: Event,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                if (event.description.isNotBlank()) {
-                    Text(
-                        text = event.description,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+    if (showDialog) {
+        EventEditDialog(
+            initial = editingEvent,
+            defaultDate = todayString(),
+            onDismiss = { showDialog = false },
+            onSave = { event ->
+                viewModel.save(event)
+                showDialog = false
+                showMessage(savedMsg)
+            },
+            onDelete = editingEvent?.let { ev ->
+                {
+                    viewModel.delete(ev)
+                    showDialog = false
+                    showMessage(deletedMsg)
                 }
-                Text(
-                    text = stringResource(R.string.agenda_event_time, event.time),
-                    style = MaterialTheme.typography.labelSmall
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Filled.Delete,
-                    contentDescription = stringResource(R.string.agenda_delete_event_content_description)
-                )
-            }
-        }
+            },
+            onValidationError = { showMessage(it) }
+        )
     }
 }
