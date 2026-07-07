@@ -14,7 +14,7 @@ interface EventDao {
     fun getAll(): Flow<List<Event>>
 
     @Insert
-    suspend fun insert(event: Event)
+    suspend fun insert(event: Event): Long
 
     @Update
     suspend fun update(event: Event)

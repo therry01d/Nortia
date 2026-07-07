@@ -43,6 +43,19 @@ fun formatDateLong(dateStr: String): String {
 
 fun monthYearLabel(year: Int, month: Int): String = "${MESES[month]} $year"
 
+fun daysInMonth(year: Int, month0: Int): Int {
+    val c = Calendar.getInstance()
+    c.set(year, month0, 1)
+    return c.getActualMaximum(Calendar.DAY_OF_MONTH)
+}
+
+fun firstWeekdayMondayIndex(year: Int, month0: Int): Int {
+    val c = Calendar.getInstance()
+    c.set(year, month0, 1)
+    val sundayIndexed = c.get(Calendar.DAY_OF_WEEK) - 1
+    return (sundayIndexed + 6) % 7
+}
+
 fun to12h(time: String): Pair<String, String> {
     val (h, m) = time.split(":").map { it.toInt() }
     val ampm = if (h < 12) "am" else "pm"

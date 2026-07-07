@@ -34,8 +34,19 @@
     <string name="tareas_empty_hechas_title">Aún nada completado</string>
     <string name="tareas_empty_hechas_subtitle">Las tareas terminadas aparecen aquí.</string>
 
-    <string name="calendario_placeholder_title">Muy pronto</string>
-    <string name="calendario_placeholder_subtitle">La vista de calendario está en camino.</string>
+    <string name="calendario_day_empty">Nada este día. Toca + para agregar.</string>
+    <string name="cd_mes_anterior">Mes anterior</string>
+    <string name="cd_mes_siguiente">Mes siguiente</string>
+
+    <string-array name="dow_labels">
+        <item>L</item>
+        <item>M</item>
+        <item>X</item>
+        <item>J</item>
+        <item>V</item>
+        <item>S</item>
+        <item>D</item>
+    </string-array>
 
     <string name="dialog_new_title">Nuevo</string>
     <string name="dialog_edit_title">Editar</string>
@@ -72,4 +83,7 @@
     <string name="cd_reminder">Recordatorio activado</string>
     <string name="allday_tarea">Tarea</string>
     <string name="allday_generic">Todo el día</string>
+
+    <string name="notif_channel_name">Recordatorios</string>
+    <string name="notif_channel_description">Avisos de eventos, tareas y recordatorios de Nortia</string>
 </resources>

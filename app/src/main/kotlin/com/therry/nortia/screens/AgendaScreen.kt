@@ -39,6 +39,7 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     val events by viewModel.events.collectAsState()
     var tab by remember { mutableStateOf(AgendaTab.HOY) }
     var tareaFilter by remember { mutableStateOf(TareaFilter.PENDIENTES) }
+    var selectedCalendarDay by remember { mutableStateOf(todayString()) }
     var editingEvent by remember { mutableStateOf<Event?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
@@ -94,7 +95,13 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
                     onOpen = { editingEvent = it; showDialog = true },
                     onToggleDone = viewModel::toggleDone
                 )
-                AgendaTab.CALENDARIO -> CalendarioScreen()
+                AgendaTab.CALENDARIO -> CalendarioScreen(
+                    events = events,
+                    selectedDay = selectedCalendarDay,
+                    onSelectedDayChange = { selectedCalendarDay = it },
+                    onOpen = { editingEvent = it; showDialog = true },
+                    onToggleDone = viewModel::toggleDone
+                )
                 AgendaTab.TAREAS -> TareasScreen(
                     events = events,
                     filter = tareaFilter,
@@ -109,7 +116,7 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     if (showDialog) {
         EventEditDialog(
             initial = editingEvent,
-            defaultDate = todayString(),
+            defaultDate = if (tab == AgendaTab.CALENDARIO) selectedCalendarDay else todayString(),
             onDismiss = { showDialog = false },
             onSave = { event ->
                 viewModel.save(event)
