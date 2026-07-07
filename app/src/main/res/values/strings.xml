@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Nortia</string>
+
+    <string name="agenda_title">Nortia - Mi Agenda</string>
+    <string name="agenda_empty">No hay eventos. ¡Agrega uno!</string>
+    <string name="agenda_add_event_content_description">Agregar evento</string>
+    <string name="agenda_delete_event_content_description">Eliminar</string>
+    <string name="agenda_event_time">Hora: %1$s</string>
+
+    <string name="dialog_add_event_title">Agregar Evento</string>
+    <string name="dialog_field_title">Título</string>
+    <string name="dialog_field_description">Descripción</string>
+    <string name="dialog_field_time">Hora (HH:mm)</string>
+    <string name="dialog_save">Guardar</string>
+    <string name="dialog_cancel">Cancelar</string>
+</resources>

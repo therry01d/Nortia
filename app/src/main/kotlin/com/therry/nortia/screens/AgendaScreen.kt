@@ -10,13 +10,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.therry.nortia.R
 import com.therry.nortia.data.Event
+import com.therry.nortia.viewmodel.AgendaViewModel
 
 @Composable
-fun AgendaScreen() {
-    var events by remember { mutableStateOf(listOf<Event>()) }
+fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
+    val events by viewModel.events.collectAsState()
     var showDialog by remember { mutableStateOf(false) }
     var titleInput by remember { mutableStateOf(TextFieldValue("")) }
     var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
@@ -25,14 +29,17 @@ fun AgendaScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Nortia - Mi Agenda") }
+                title = { Text(stringResource(R.string.agenda_title)) }
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true }
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "Agregar evento")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.agenda_add_event_content_description)
+                )
             }
         }
     ) { paddingValues ->
@@ -47,7 +54,7 @@ fun AgendaScreen() {
                         .fillMaxSize()
                         .wrapContentSize(Alignment.Center)
                 ) {
-                    Text("No hay eventos. ¡Agrega uno!")
+                    Text(stringResource(R.string.agenda_empty))
                 }
             } else {
                 LazyColumn(
@@ -59,9 +66,7 @@ fun AgendaScreen() {
                     items(events) { event ->
                         EventCard(
                             event = event,
-                            onDelete = {
-                                events = events.filter { it.id != event.id }
-                            }
+                            onDelete = { viewModel.deleteEvent(event) }
                         )
                     }
                 }
@@ -71,7 +76,7 @@ fun AgendaScreen() {
         if (showDialog) {
             AlertDialog(
                 onDismissRequest = { showDialog = false },
-                title = { Text("Agregar Evento") },
+                title = { Text(stringResource(R.string.dialog_add_event_title)) },
                 text = {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
@@ -80,19 +85,19 @@ fun AgendaScreen() {
                         TextField(
                             value = titleInput,
                             onValueChange = { titleInput = it },
-                            label = { Text("Título") },
+                            label = { Text(stringResource(R.string.dialog_field_title)) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         TextField(
                             value = descriptionInput,
                             onValueChange = { descriptionInput = it },
-                            label = { Text("Descripción") },
+                            label = { Text(stringResource(R.string.dialog_field_description)) },
                             modifier = Modifier.fillMaxWidth()
                         )
                         TextField(
                             value = timeInput,
                             onValueChange = { timeInput = it },
-                            label = { Text("Hora (HH:mm)") },
+                            label = { Text(stringResource(R.string.dialog_field_time)) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -101,14 +106,11 @@ fun AgendaScreen() {
                     Button(
                         onClick = {
                             if (titleInput.text.isNotBlank()) {
-                                val newEvent = Event(
-                                    id = events.size + 1,
+                                viewModel.addEvent(
                                     title = titleInput.text,
                                     description = descriptionInput.text,
-                                    date = System.currentTimeMillis(),
                                     time = timeInput.text.ifBlank { "00:00" }
                                 )
-                                events = events + newEvent
                                 titleInput = TextFieldValue("")
                                 descriptionInput = TextFieldValue("")
                                 timeInput = TextFieldValue("")
@@ -116,12 +118,12 @@ fun AgendaScreen() {
                             }
                         }
                     ) {
-                        Text("Guardar")
+                        Text(stringResource(R.string.dialog_save))
                     }
                 },
                 dismissButton = {
                     Button(onClick = { showDialog = false }) {
-                        Text("Cancelar")
+                        Text(stringResource(R.string.dialog_cancel))
                     }
                 }
             )
@@ -161,12 +163,15 @@ fun EventCard(
                     )
                 }
                 Text(
-                    text = "Hora: ${event.time}",
+                    text = stringResource(R.string.agenda_event_time, event.time),
                     style = MaterialTheme.typography.labelSmall
                 )
             }
             IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = stringResource(R.string.agenda_delete_event_content_description)
+                )
             }
         }
     }

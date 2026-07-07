@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Cuerpo del calendario -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,40 L80,40 L80,80 C80,82.2 78.2,84 76,84 L32,84 C29.8,84 28,82.2 28,80 Z" />
+    <!-- Cabecera -->
+    <path
+        android:fillColor="#4B3A82"
+        android:pathData="M32,32 L76,32 C78.2,32 80,33.8 80,36 L80,40 L28,40 L28,36 C28,33.8 29.8,32 32,32 Z" />
+    <!-- Anillas -->
+    <path
+        android:fillColor="#4B3A82"
+        android:pathData="M34,28 L40,28 L40,36 L34,36 Z" />
+    <path
+        android:fillColor="#4B3A82"
+        android:pathData="M68,28 L74,28 L74,36 L68,36 Z" />
+</vector>
