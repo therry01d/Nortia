@@ -6,7 +6,7 @@
     <string name="tab_calendario">Calendario</string>
     <string name="tab_tareas">Tareas</string>
 
-    <string name="label_feriado">Feriado</string>
+    <string name="label_feriado">Día festivo</string>
 
     <string name="type_evento">Evento</string>
     <string name="type_tarea">Tarea</string>
@@ -71,7 +71,7 @@
     <string name="repeat_weekly">Semanal</string>
     <string name="repeat_monthly">Mensual</string>
     <string name="repeat_yearly">Anual</string>
-    <string name="error_repeat_needs_date">Elegí una fecha para poder repetir</string>
+    <string name="error_repeat_needs_date">Elige una fecha para poder repetir</string>
 
     <string name="remind_at_time">A la hora exacta</string>
     <string name="remind_5">5 min antes</string>
@@ -88,7 +88,7 @@
     <string name="error_reminder_needs_datetime">El recordatorio necesita fecha y hora</string>
     <string name="toast_saved">Guardado</string>
     <string name="toast_deleted">Eliminado</string>
-    <string name="toast_exported">Copia de seguridad exportada</string>
+    <string name="toast_exported">Respaldo exportado</string>
     <string name="toast_imported">Se importaron %1$d elementos</string>
     <string name="error_export_failed">No se pudo exportar</string>
     <string name="error_import_failed">No se pudo importar (¿es un archivo de respaldo válido?)</string>
