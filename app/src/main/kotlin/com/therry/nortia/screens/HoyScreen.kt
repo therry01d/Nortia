@@ -17,6 +17,7 @@ import com.therry.nortia.data.EventOccurrence
 import com.therry.nortia.data.EventType
 import com.therry.nortia.data.RepeatRule
 import com.therry.nortia.ui.theme.PrioridadAlta
+import com.therry.nortia.util.Holidays
 import com.therry.nortia.util.nowTimeString
 import com.therry.nortia.util.occursOn
 import com.therry.nortia.util.todayString
@@ -79,8 +80,9 @@ fun HoyScreen(
     val today = todayString()
     val nowTime = nowTimeString()
     val rows = buildHoyRows(events, today, nowTime)
+    val holidays = Holidays.forDate(today)
 
-    if (rows.isEmpty()) {
+    if (rows.isEmpty() && holidays.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🌤️", style = MaterialTheme.typography.displayMedium)
@@ -101,6 +103,7 @@ fun HoyScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        items(holidays) { holiday -> HolidayCard(holiday = holiday) }
         items(rows) { row ->
             when (row) {
                 is HoyRow.SectionLabel -> Text(

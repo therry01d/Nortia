@@ -38,7 +38,7 @@ import com.therry.nortia.util.todayString
 import com.therry.nortia.viewmodel.AgendaViewModel
 import kotlinx.coroutines.launch
 
-private enum class AgendaTab { HOY, CALENDARIO, TAREAS }
+private enum class AgendaTab { HOY, SEMANA, CALENDARIO, TAREAS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -48,6 +48,7 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     var tareaFilter by remember { mutableStateOf(TareaFilter.PENDIENTES) }
     var selectedCalendarDay by remember { mutableStateOf(todayString()) }
     var editingEvent by remember { mutableStateOf<Event?>(null) }
+    var pendingDate by remember { mutableStateOf<String?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -129,6 +130,13 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
                     colors = navColors
                 )
                 NavigationBarItem(
+                    selected = tab == AgendaTab.SEMANA,
+                    onClick = { tab = AgendaTab.SEMANA },
+                    icon = { Text("📆") },
+                    label = { Text(stringResource(R.string.tab_semana)) },
+                    colors = navColors
+                )
+                NavigationBarItem(
                     selected = tab == AgendaTab.CALENDARIO,
                     onClick = { tab = AgendaTab.CALENDARIO },
                     icon = { Text("🗓️") },
@@ -146,7 +154,7 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { editingEvent = null; showDialog = true },
+                onClick = { editingEvent = null; pendingDate = null; showDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
             ) {
@@ -164,6 +172,12 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
                     events = events,
                     onOpen = { editingEvent = it; showDialog = true },
                     onToggleDone = viewModel::toggleDone
+                )
+                AgendaTab.SEMANA -> SemanaScreen(
+                    events = events,
+                    onOpen = { editingEvent = it; showDialog = true },
+                    onToggleDone = viewModel::toggleDone,
+                    onQuickAdd = { day -> editingEvent = null; pendingDate = day; showDialog = true }
                 )
                 AgendaTab.CALENDARIO -> CalendarioScreen(
                     events = events,
@@ -186,7 +200,8 @@ fun AgendaScreen(viewModel: AgendaViewModel = viewModel()) {
     if (showDialog) {
         EventEditDialog(
             initial = editingEvent,
-            defaultDate = if (tab == AgendaTab.CALENDARIO) selectedCalendarDay else todayString(),
+            defaultDate = pendingDate
+                ?: if (tab == AgendaTab.CALENDARIO) selectedCalendarDay else todayString(),
             onDismiss = { showDialog = false },
             onSave = { event ->
                 viewModel.save(event)

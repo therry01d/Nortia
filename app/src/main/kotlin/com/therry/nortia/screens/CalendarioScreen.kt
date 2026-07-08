@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import com.therry.nortia.R
 import com.therry.nortia.data.Event
 import com.therry.nortia.data.EventOccurrence
+import com.therry.nortia.ui.theme.Feriado
+import com.therry.nortia.util.Holidays
 import com.therry.nortia.util.dateToCalendar
 import com.therry.nortia.util.daysInMonth
 import com.therry.nortia.util.firstWeekdayMondayIndex
@@ -74,7 +76,10 @@ private fun buildCalendarCells(
     }
     for (d in 1..daysInM) {
         val key = formatDate(year, month0, d)
-        val dotColors = events.filter { occursOn(it, key) }.map { categoryColor(it.category) }.distinct()
+        val dotColors = buildList {
+            if (Holidays.forDate(key).isNotEmpty()) add(Feriado)
+            addAll(events.filter { occursOn(it, key) }.map { categoryColor(it.category) })
+        }.distinct()
         cells += CalCell(
             day = d,
             dateKey = key,
@@ -112,6 +117,7 @@ fun CalendarioScreen(
         .filter { occursOn(it, selectedDay) }
         .sortedBy { it.time ?: "99:99" }
         .map { EventOccurrence(it, selectedDay) }
+    val dayHolidays = Holidays.forDate(selectedDay)
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
@@ -165,7 +171,7 @@ fun CalendarioScreen(
             modifier = Modifier.padding(20.dp, 20.dp, 20.dp, 8.dp)
         )
 
-        if (dayItems.isEmpty()) {
+        if (dayItems.isEmpty() && dayHolidays.isEmpty()) {
             Text(
                 stringResource(R.string.calendario_day_empty),
                 style = MaterialTheme.typography.bodyMedium,
@@ -178,6 +184,7 @@ fun CalendarioScreen(
                 contentPadding = PaddingValues(16.dp, 0.dp, 16.dp, 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                items(dayHolidays) { holiday -> HolidayCard(holiday = holiday) }
                 items(dayItems) { occurrence ->
                     EventCard(
                         occurrence = occurrence,

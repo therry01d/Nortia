@@ -2,8 +2,11 @@
     <string name="app_name">Nortia</string>
 
     <string name="tab_hoy">Hoy</string>
+    <string name="tab_semana">Semana</string>
     <string name="tab_calendario">Calendario</string>
     <string name="tab_tareas">Tareas</string>
+
+    <string name="label_feriado">Feriado</string>
 
     <string name="type_evento">Evento</string>
     <string name="type_tarea">Tarea</string>

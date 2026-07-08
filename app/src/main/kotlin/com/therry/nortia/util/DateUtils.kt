@@ -56,6 +56,12 @@ fun firstWeekdayMondayIndex(year: Int, month0: Int): Int {
     return (sundayIndexed + 6) % 7
 }
 
+fun weekdayNameOf(dateStr: String): String =
+    DIAS[dateToCalendar(dateStr).get(Calendar.DAY_OF_WEEK) - 1]
+
+fun dayNumberOf(dateStr: String): Int =
+    dateToCalendar(dateStr).get(Calendar.DAY_OF_MONTH)
+
 fun addDays(dateStr: String, days: Int): String {
     val c = dateToCalendar(dateStr)
     c.add(Calendar.DAY_OF_MONTH, days)

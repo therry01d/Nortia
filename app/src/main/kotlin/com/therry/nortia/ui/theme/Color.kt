@@ -37,5 +37,8 @@ val PrioridadAlta = Color(0xFFE5484D)
 val PrioridadMedia = Color(0xFFE0A400)
 val PrioridadBaja = Color(0xFF4FA96A)
 
+// Feriados (se muestran como eventos de solo lectura)
+val Feriado = Color(0xFF2FA36B)
+
 val AltaSoftLight = Color(0xFFFDECEC)
 val AltaSoftDark = Color(0xFF4A1F21)
