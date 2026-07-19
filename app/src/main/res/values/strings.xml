@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Nortia</string>
+
+    <string name="agenda_title">Nortia - Mi Agenda</string>
+    <string name="add_event">Agregar evento</string>
+    <string name="delete_event">Eliminar</string>
+    <string name="empty_agenda">No hay eventos. ¡Agrega uno!</string>
+    <string name="add_event_dialog_title">Agregar Evento</string>
+    <string name="label_title">Título</string>
+    <string name="label_description">Descripción</string>
+    <string name="label_date">Fecha</string>
+    <string name="label_time">Hora (HH:mm)</string>
+    <string name="action_save">Guardar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_pick_date">Elegir fecha</string>
+
+    <string name="notification_channel_name">Recordatorios de eventos</string>
+    <string name="notification_channel_description">Alertas a pantalla completa para tus eventos de Nortia</string>
+    <string name="notification_title">Recordatorio de evento</string>
+    <string name="action_dismiss">Descartar</string>
+    <string name="action_snooze">Posponer 10 min</string>
+    <string name="reminder_activity_dismiss">Descartar</string>
+    <string name="reminder_activity_snooze">Posponer 10 min</string>
+
+    <string name="permission_exact_alarm_rationale">Nortia necesita permiso para programar alarmas exactas y avisarte a la hora justa de tus eventos.</string>
+    <string name="permission_notifications_rationale">Nortia necesita permiso para mostrar notificaciones de tus recordatorios.</string>
+</resources>
