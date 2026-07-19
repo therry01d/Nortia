@@ -6,43 +6,69 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.therry.nortia.data.AppDatabase
-import com.therry.nortia.data.Event
-import com.therry.nortia.data.EventDao
+import com.therry.nortia.data.Item
+import com.therry.nortia.data.ItemDao
 import com.therry.nortia.notifications.NotificationScheduler
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AgendaViewModel(
     application: Application,
-    private val dao: EventDao
+    private val dao: ItemDao
 ) : AndroidViewModel(application) {
 
-    val events: StateFlow<List<Event>> = dao.getAll()
+    val items: StateFlow<List<Item>> = dao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun addEvent(title: String, description: String, date: Long, time: String) {
-        if (title.isBlank()) return
+    private val _notificationsEnabled = MutableStateFlow(false)
+    val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
+
+    fun setNotificationsEnabled(enabled: Boolean) {
+        _notificationsEnabled.value = enabled
+        if (enabled) rescheduleAll()
+    }
+
+    fun addItem(item: Item) {
         viewModelScope.launch {
-            val newId = dao.insert(
-                Event(title = title, description = description, date = date, time = time)
-            )
-            val scheduled = Event(
-                id = newId.toInt(),
-                title = title,
-                description = description,
-                date = date,
-                time = time
-            )
-            NotificationScheduler.schedule(getApplication(), scheduled)
+            val newId = dao.insert(item)
+            NotificationScheduler.schedule(getApplication(), item.copy(id = newId.toInt()))
         }
     }
 
-    fun deleteEvent(event: Event) {
+    fun updateItem(item: Item) {
         viewModelScope.launch {
-            dao.delete(event)
-            NotificationScheduler.cancel(getApplication(), event)
+            NotificationScheduler.cancel(getApplication(), item)
+            dao.update(item)
+            NotificationScheduler.schedule(getApplication(), item)
+        }
+    }
+
+    fun deleteItem(item: Item) {
+        viewModelScope.launch {
+            dao.delete(item)
+            NotificationScheduler.cancel(getApplication(), item)
+        }
+    }
+
+    fun toggleDone(item: Item) {
+        val updated = item.copy(done = !item.done)
+        viewModelScope.launch {
+            dao.update(updated)
+            if (updated.done) {
+                NotificationScheduler.cancel(getApplication(), updated)
+            } else {
+                NotificationScheduler.schedule(getApplication(), updated)
+            }
+        }
+    }
+
+    private fun rescheduleAll() {
+        viewModelScope.launch {
+            items.value.forEach { NotificationScheduler.schedule(getApplication(), it) }
         }
     }
 
@@ -50,7 +76,7 @@ class AgendaViewModel(
         fun factory(application: Application): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    val dao = AppDatabase.getInstance(application).eventDao()
+                    val dao = AppDatabase.getInstance(application).itemDao()
                     @Suppress("UNCHECKED_CAST")
                     return AgendaViewModel(application, dao) as T
                 }

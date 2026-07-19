@@ -25,32 +25,54 @@ class MainActivity : ComponentActivity() {
     }
 
     private val notificationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            viewModel.setNotificationsEnabled(granted)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         NotificationHelper.createChannel(this)
-        requestNotificationPermissionIfNeeded()
+        viewModel.setNotificationsEnabled(hasNotificationPermission())
         requestExactAlarmPermissionIfNeeded()
 
         setContent {
             NortiaTheme {
-                AgendaScreen(viewModel = viewModel)
+                AgendaScreen(
+                    viewModel = viewModel,
+                    onRequestNotifications = { onBellClicked() }
+                )
             }
         }
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val granted = ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-            if (!granted) {
-                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    override fun onResume() {
+        super.onResume()
+        viewModel.setNotificationsEnabled(hasNotificationPermission())
+    }
+
+    private fun onBellClicked() {
+        if (hasNotificationPermission()) {
+            // Ya está habilitado; llevar al usuario a los ajustes para que pueda desactivarlo si quiere.
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             }
+            startActivity(intent)
+            return
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.setNotificationsEnabled(true)
+        }
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun requestExactAlarmPermissionIfNeeded() {

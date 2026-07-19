@@ -12,11 +12,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.R
-import com.therry.nortia.data.Event
+import com.therry.nortia.data.Category
+import com.therry.nortia.data.Item
+import com.therry.nortia.data.ItemType
 import com.therry.nortia.ui.theme.NortiaTheme
+import com.therry.nortia.util.DateTimeUtils
 
 /**
  * Se lanza vía fullScreenIntent: debe despertar la pantalla y mostrarse
@@ -24,24 +28,37 @@ import com.therry.nortia.ui.theme.NortiaTheme
  */
 class ReminderFullScreenActivity : ComponentActivity() {
 
-    private var eventId: Int = -1
+    private var itemId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreenAndWake()
 
-        eventId = intent.getIntExtra(NotificationScheduler.EXTRA_EVENT_ID, -1)
-        val title = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TITLE).orEmpty()
-        val description = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_DESCRIPTION).orEmpty()
-        val time = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TIME).orEmpty()
-        val event = Event(id = eventId, title = title, description = description, date = 0L, time = time)
+        itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
+        val type = ItemType.valueOf(
+            intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name
+        )
+        val title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty()
+        val note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty()
+        val time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME)
+        val item = Item(
+            id = itemId,
+            type = type,
+            title = title,
+            date = DateTimeUtils.today(),
+            time = time,
+            category = Category.PERSONAL,
+            priority = null,
+            note = note,
+            remind = true
+        )
 
         setContent {
             NortiaTheme {
                 ReminderScreen(
-                    event = event,
+                    item = item,
                     onDismiss = { dismiss() },
-                    onSnooze = { snooze(event) }
+                    onSnooze = { snooze(item) }
                 )
             }
         }
@@ -65,28 +82,34 @@ class ReminderFullScreenActivity : ComponentActivity() {
     }
 
     private fun dismiss() {
-        if (eventId != -1) {
-            NotificationManagerCompat.from(this).cancel(eventId)
+        if (itemId != -1) {
+            NotificationManagerCompat.from(this).cancel(itemId)
         }
         finish()
     }
 
-    private fun snooze(event: Event) {
-        if (eventId != -1) {
-            NotificationManagerCompat.from(this).cancel(eventId)
+    private fun snooze(item: Item) {
+        if (itemId != -1) {
+            NotificationManagerCompat.from(this).cancel(itemId)
         }
         NotificationScheduler.schedule(
             this,
-            event,
+            item,
             triggerAtMillisOverride = System.currentTimeMillis() + 10 * 60 * 1000L
         )
         finish()
     }
 }
 
+private fun typeLabel(type: ItemType): String = when (type) {
+    ItemType.EVENTO -> "Evento"
+    ItemType.TAREA -> "Tarea"
+    ItemType.RECORDATORIO -> "Recordatorio"
+}
+
 @Composable
 private fun ReminderScreen(
-    event: Event,
+    item: Item,
     onDismiss: () -> Unit,
     onSnooze: () -> Unit
 ) {
@@ -100,28 +123,30 @@ private fun ReminderScreen(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = stringResource(R.string.notification_title),
+                text = typeLabel(item.type),
                 style = MaterialTheme.typography.labelLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = event.title,
+                text = item.title,
                 style = MaterialTheme.typography.headlineMedium,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center
             )
-            if (event.description.isNotBlank()) {
+            if (item.note.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = event.description,
+                    text = item.note,
                     style = MaterialTheme.typography.bodyLarge,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    textAlign = TextAlign.Center
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = event.time,
-                style = MaterialTheme.typography.titleLarge
-            )
+            if (!item.time.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = item.time,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
             Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = onDismiss,

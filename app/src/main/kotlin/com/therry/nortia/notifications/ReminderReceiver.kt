@@ -8,32 +8,41 @@ import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.R
-import com.therry.nortia.data.Event
+import com.therry.nortia.data.Category
+import com.therry.nortia.data.Item
+import com.therry.nortia.data.ItemType
+import com.therry.nortia.util.DateTimeUtils
 
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val eventId = intent.getIntExtra(NotificationScheduler.EXTRA_EVENT_ID, -1)
-        if (eventId == -1) return
+        val itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
+        if (itemId == -1) return
 
         when (intent.action) {
             ACTION_DISMISS -> {
-                NotificationManagerCompat.from(context).cancel(eventId)
+                NotificationManagerCompat.from(context).cancel(itemId)
             }
             ACTION_SNOOZE -> {
-                NotificationManagerCompat.from(context).cancel(eventId)
-                val event = eventFromIntent(intent, eventId)
+                NotificationManagerCompat.from(context).cancel(itemId)
+                val item = itemFromIntent(intent, itemId)
                 NotificationScheduler.schedule(
                     context,
-                    event,
+                    item,
                     triggerAtMillisOverride = System.currentTimeMillis() + SNOOZE_MILLIS
                 )
             }
-            else -> showReminder(context, intent, eventId)
+            else -> showReminder(context, intent, itemId)
         }
     }
 
-    private fun showReminder(context: Context, intent: Intent, eventId: Int) {
+    private fun typeLabel(type: ItemType): String = when (type) {
+        ItemType.EVENTO -> "Evento"
+        ItemType.TAREA -> "Tarea"
+        ItemType.RECORDATORIO -> "Recordatorio"
+    }
+
+    private fun showReminder(context: Context, intent: Intent, itemId: Int) {
         // Algunos fabricantes no despiertan el dispositivo salvo que se sostenga
         // brevemente un wake lock al recibir la alarma con la pantalla apagada.
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -43,32 +52,37 @@ class ReminderReceiver : BroadcastReceiver() {
         )
         wakeLock.acquire(10_000L)
 
-        val title = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TITLE).orEmpty()
-        val description = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_DESCRIPTION).orEmpty()
-        val time = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TIME).orEmpty()
+        val type = ItemType.valueOf(intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name)
+        val title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty()
+        val note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty()
+        val time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME)
 
         val fullScreenIntent = Intent(context, ReminderFullScreenActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            putExtra(NotificationScheduler.EXTRA_EVENT_ID, eventId)
-            putExtra(NotificationScheduler.EXTRA_EVENT_TITLE, title)
-            putExtra(NotificationScheduler.EXTRA_EVENT_DESCRIPTION, description)
-            putExtra(NotificationScheduler.EXTRA_EVENT_TIME, time)
+            putExtra(NotificationScheduler.EXTRA_ITEM_ID, itemId)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TYPE, type.name)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TITLE, title)
+            putExtra(NotificationScheduler.EXTRA_ITEM_NOTE, note)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TIME, time)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,
-            eventId,
+            itemId,
             fullScreenIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val dismissPendingIntent = actionPendingIntent(context, eventId, ACTION_DISMISS, title, description, time)
-        val snoozePendingIntent = actionPendingIntent(context, eventId, ACTION_SNOOZE, title, description, time)
+        val dismissPendingIntent = actionPendingIntent(context, itemId, ACTION_DISMISS, type, title, note, time)
+        val snoozePendingIntent = actionPendingIntent(context, itemId, ACTION_SNOOZE, type, title, note, time)
+
+        val bodyPrefix = if (!time.isNullOrBlank()) "$time · " else ""
+        val body = bodyPrefix + note.ifBlank { typeLabel(type) }
 
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title.ifBlank { context.getString(R.string.notification_title) })
-            .setContentText(if (description.isNotBlank()) "$description · $time" else time)
+            .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -80,39 +94,46 @@ class ReminderReceiver : BroadcastReceiver() {
             .addAction(0, context.getString(R.string.action_snooze), snoozePendingIntent)
             .build()
 
-        NotificationManagerCompat.from(context).notify(eventId, notification)
+        NotificationManagerCompat.from(context).notify(itemId, notification)
 
         if (wakeLock.isHeld) {
             wakeLock.release()
         }
     }
 
-    private fun eventFromIntent(intent: Intent, eventId: Int): Event = Event(
-        id = eventId,
-        title = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TITLE).orEmpty(),
-        description = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_DESCRIPTION).orEmpty(),
-        date = System.currentTimeMillis(),
-        time = intent.getStringExtra(NotificationScheduler.EXTRA_EVENT_TIME).orEmpty()
+    private fun itemFromIntent(intent: Intent, itemId: Int): Item = Item(
+        id = itemId,
+        type = ItemType.valueOf(intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name),
+        title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty(),
+        date = DateTimeUtils.today(),
+        time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME),
+        category = Category.PERSONAL,
+        priority = null,
+        note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty(),
+        done = false,
+        remind = true
     )
 
     private fun actionPendingIntent(
         context: Context,
-        eventId: Int,
+        itemId: Int,
         action: String,
+        type: ItemType,
         title: String,
-        description: String,
-        time: String
+        note: String,
+        time: String?
     ): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             this.action = action
-            putExtra(NotificationScheduler.EXTRA_EVENT_ID, eventId)
-            putExtra(NotificationScheduler.EXTRA_EVENT_TITLE, title)
-            putExtra(NotificationScheduler.EXTRA_EVENT_DESCRIPTION, description)
-            putExtra(NotificationScheduler.EXTRA_EVENT_TIME, time)
+            putExtra(NotificationScheduler.EXTRA_ITEM_ID, itemId)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TYPE, type.name)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TITLE, title)
+            putExtra(NotificationScheduler.EXTRA_ITEM_NOTE, note)
+            putExtra(NotificationScheduler.EXTRA_ITEM_TIME, time)
         }
         return PendingIntent.getBroadcast(
             context,
-            "$action$eventId".hashCode(),
+            "$action$itemId".hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

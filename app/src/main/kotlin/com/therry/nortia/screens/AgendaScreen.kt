@@ -1,208 +1,117 @@
 package com.therry.nortia.screens
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.therry.nortia.AgendaViewModel
-import com.therry.nortia.R
-import com.therry.nortia.data.Event
+import com.therry.nortia.data.Item
+import com.therry.nortia.ui.components.AgendaBottomNav
+import com.therry.nortia.ui.components.AppTab
+import com.therry.nortia.ui.components.TopHeader
 import com.therry.nortia.util.DateTimeUtils
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AgendaScreen(viewModel: AgendaViewModel) {
-    val events by viewModel.events.collectAsState()
+fun AgendaScreen(
+    viewModel: AgendaViewModel,
+    onRequestNotifications: () -> Unit
+) {
+    val items by viewModel.items.collectAsState()
+    val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
 
-    var showDialog by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var titleInput by remember { mutableStateOf(TextFieldValue("")) }
-    var descriptionInput by remember { mutableStateOf(TextFieldValue("")) }
-    var timeInput by remember { mutableStateOf(TextFieldValue("")) }
-    var selectedDateMillis by remember { mutableStateOf(DateTimeUtils.startOfDay(System.currentTimeMillis())) }
+    var currentTab by rememberSaveable { mutableStateOf(AppTab.HOY) }
+    var calCursor by rememberSaveable { mutableStateOf(DateTimeUtils.today()) }
+    var selDay by rememberSaveable { mutableStateOf(DateTimeUtils.today()) }
+
+    var editingItem by remember { mutableStateOf<Item?>(null) }
+    var showEditor by remember { mutableStateOf(false) }
+
+    val defaultDateForNew = if (currentTab == AppTab.CALENDARIO) selDay else DateTimeUtils.today()
+
+    val (greet, title) = when (currentTab) {
+        AppTab.HOY -> hoyGreeting() to hoyTitle()
+        AppTab.CALENDARIO -> "Calendario" to "Agenda"
+        AppTab.TAREAS -> "Pendientes" to "Tareas"
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.agenda_title)) }
+            TopHeader(
+                greet = greet,
+                title = title,
+                notificationsEnabled = notificationsEnabled,
+                onBellClick = onRequestNotifications
             )
+        },
+        bottomBar = {
+            AgendaBottomNav(current = currentTab, onSelect = { currentTab = it })
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showDialog = true }
+                onClick = {
+                    editingItem = null
+                    showEditor = true
+                }
             ) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add_event))
+                Text("+", fontSize = 26.sp)
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            if (events.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center)
-                ) {
-                    Text(stringResource(R.string.empty_agenda))
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(events, key = { it.id }) { event ->
-                        EventCard(
-                            event = event,
-                            onDelete = { viewModel.deleteEvent(event) }
-                        )
-                    }
-                }
-            }
-        }
-
-        if (showDialog) {
-            AlertDialog(
-                onDismissRequest = { showDialog = false },
-                title = { Text(stringResource(R.string.add_event_dialog_title)) },
-                text = {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        TextField(
-                            value = titleInput,
-                            onValueChange = { titleInput = it },
-                            label = { Text(stringResource(R.string.label_title)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        TextField(
-                            value = descriptionInput,
-                            onValueChange = { descriptionInput = it },
-                            label = { Text(stringResource(R.string.label_description)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedButton(
-                            onClick = { showDatePicker = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("${stringResource(R.string.label_date)}: ${DateTimeUtils.formatDate(selectedDateMillis)}")
-                        }
-                        TextField(
-                            value = timeInput,
-                            onValueChange = { timeInput = it },
-                            label = { Text(stringResource(R.string.label_time)) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (titleInput.text.isNotBlank()) {
-                                viewModel.addEvent(
-                                    title = titleInput.text,
-                                    description = descriptionInput.text,
-                                    date = selectedDateMillis,
-                                    time = timeInput.text.ifBlank { "00:00" }
-                                )
-                                titleInput = TextFieldValue("")
-                                descriptionInput = TextFieldValue("")
-                                timeInput = TextFieldValue("")
-                                selectedDateMillis = DateTimeUtils.startOfDay(System.currentTimeMillis())
-                                showDialog = false
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
-                dismissButton = {
-                    Button(onClick = { showDialog = false }) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                }
-            )
-        }
-
-        if (showDatePicker) {
-            val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDateMillis)
-            DatePickerDialog(
-                onDismissRequest = { showDatePicker = false },
-                confirmButton = {
-                    TextButton(onClick = {
-                        datePickerState.selectedDateMillis?.let {
-                            selectedDateMillis = DateTimeUtils.startOfDay(it)
-                        }
-                        showDatePicker = false
-                    }) {
-                        Text(stringResource(R.string.action_save))
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showDatePicker = false }) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                }
-            ) {
-                DatePicker(state = datePickerState)
+        Box(modifier = Modifier.padding(paddingValues)) {
+            when (currentTab) {
+                AppTab.HOY -> HoyScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.CALENDARIO -> CalendarioScreen(
+                    items = items,
+                    calCursor = calCursor,
+                    onCalCursorChange = { calCursor = it },
+                    selDay = selDay,
+                    onSelDayChange = { selDay = it },
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.TAREAS -> TareasScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
-}
 
-@Composable
-fun EventCard(
-    event: Event,
-    onDelete: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = event.title,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                if (event.description.isNotBlank()) {
-                    Text(
-                        text = event.description,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+    if (showEditor) {
+        val current = editingItem
+        ItemEditorSheet(
+            editing = current,
+            defaultDate = defaultDateForNew,
+            onDismiss = { showEditor = false },
+            onSave = { item ->
+                if (current != null) viewModel.updateItem(item) else viewModel.addItem(item)
+                showEditor = false
+            },
+            onDelete = current?.let {
+                {
+                    viewModel.deleteItem(it)
+                    showEditor = false
                 }
-                Text(
-                    text = "${DateTimeUtils.formatDate(event.date)} - ${event.time}",
-                    style = MaterialTheme.typography.labelSmall
-                )
             }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.delete_event))
-            }
-        }
+        )
     }
 }
