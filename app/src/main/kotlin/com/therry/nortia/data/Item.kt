@@ -6,6 +6,7 @@ import androidx.room.PrimaryKey
 enum class ItemType { EVENTO, TAREA, RECORDATORIO }
 enum class Category { TRABAJO, PERSONAL }
 enum class Priority { ALTA, MEDIA, BAJA }
+enum class Repeat { NINGUNO, DIARIO, SEMANAL, MENSUAL, ANUAL }
 
 @Entity(tableName = "items")
 data class Item(
@@ -23,5 +24,6 @@ data class Item(
     val note: String = "",
     val done: Boolean = false,
     val remind: Boolean = false,
-    val remindBeforeMinutes: Int = 10
+    val remindBeforeMinutes: Int = 10,
+    val repeat: Repeat = Repeat.NINGUNO
 )

@@ -12,11 +12,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.ui.components.EmptyState
 import com.therry.nortia.ui.components.ItemCard
 import com.therry.nortia.ui.components.SectionLabel
 import com.therry.nortia.ui.theme.Personal
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.util.RecurrenceUtils
 import java.util.Calendar
 
 fun hoyGreeting(): String {
@@ -46,11 +48,14 @@ fun HoyScreen(
     }
 
     val dueTasks = items
-        .filter { it.type == ItemType.TAREA && !it.done && it.date != null && it.date < today }
+        .filter {
+            it.type == ItemType.TAREA && !it.done && it.repeat == Repeat.NINGUNO &&
+                it.date != null && it.date < today
+        }
         .sortedBy { it.date }
 
     val todayList = items
-        .filter { it.date == today && !(it.type == ItemType.TAREA && it.done) }
+        .filter { RecurrenceUtils.occursOn(it, today) && !(it.type == ItemType.TAREA && it.done) }
 
     val untimed = todayList.filter { it.time == null }
     val timed = todayList.filter { it.time != null }.sortedBy { it.time }

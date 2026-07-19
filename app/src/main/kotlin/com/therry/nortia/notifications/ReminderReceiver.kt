@@ -11,6 +11,7 @@ import com.therry.nortia.R
 import com.therry.nortia.data.Category
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.util.DateTimeUtils
 
 class ReminderReceiver : BroadcastReceiver() {
@@ -52,19 +53,13 @@ class ReminderReceiver : BroadcastReceiver() {
         )
         wakeLock.acquire(10_000L)
 
-        val type = ItemType.valueOf(intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name)
-        val title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty()
-        val note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty()
-        val time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME)
+        val item = itemFromIntent(intent, itemId)
+        val time = item.time
 
         val fullScreenIntent = Intent(context, ReminderFullScreenActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
-            putExtra(NotificationScheduler.EXTRA_ITEM_ID, itemId)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TYPE, type.name)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TITLE, title)
-            putExtra(NotificationScheduler.EXTRA_ITEM_NOTE, note)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TIME, time)
+            putItemExtras(item)
         }
         val fullScreenPendingIntent = PendingIntent.getActivity(
             context,
@@ -73,15 +68,15 @@ class ReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val dismissPendingIntent = actionPendingIntent(context, itemId, ACTION_DISMISS, type, title, note, time)
-        val snoozePendingIntent = actionPendingIntent(context, itemId, ACTION_SNOOZE, type, title, note, time)
+        val dismissPendingIntent = actionPendingIntent(context, item, ACTION_DISMISS)
+        val snoozePendingIntent = actionPendingIntent(context, item, ACTION_SNOOZE)
 
         val bodyPrefix = if (!time.isNullOrBlank()) "$time · " else ""
-        val body = bodyPrefix + note.ifBlank { typeLabel(type) }
+        val body = bodyPrefix + item.note.ifBlank { typeLabel(item.type) }
 
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title.ifBlank { context.getString(R.string.notification_title) })
+            .setContentTitle(item.title.ifBlank { context.getString(R.string.notification_title) })
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -96,44 +91,60 @@ class ReminderReceiver : BroadcastReceiver() {
 
         NotificationManagerCompat.from(context).notify(itemId, notification)
 
+        if (item.repeat != Repeat.NINGUNO) {
+            NotificationScheduler.scheduleNextRecurrence(context, item)
+        }
+
         if (wakeLock.isHeld) {
             wakeLock.release()
         }
     }
 
-    private fun itemFromIntent(intent: Intent, itemId: Int): Item = Item(
-        id = itemId,
-        type = ItemType.valueOf(intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name),
-        title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty(),
-        date = DateTimeUtils.today(),
-        time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME),
-        category = Category.PERSONAL,
-        priority = null,
-        note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty(),
-        done = false,
-        remind = true
-    )
+    private fun itemFromIntent(intent: Intent, itemId: Int): Item {
+        val date = if (intent.hasExtra(NotificationScheduler.EXTRA_ITEM_DATE)) {
+            intent.getLongExtra(NotificationScheduler.EXTRA_ITEM_DATE, DateTimeUtils.today())
+        } else {
+            DateTimeUtils.today()
+        }
+        return Item(
+            id = itemId,
+            type = ItemType.valueOf(
+                intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name
+            ),
+            title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty(),
+            date = date,
+            time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME),
+            category = Category.PERSONAL,
+            priority = null,
+            note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty(),
+            done = false,
+            remind = true,
+            remindBeforeMinutes = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, 10),
+            repeat = Repeat.valueOf(
+                intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_REPEAT) ?: Repeat.NINGUNO.name
+            )
+        )
+    }
 
-    private fun actionPendingIntent(
-        context: Context,
-        itemId: Int,
-        action: String,
-        type: ItemType,
-        title: String,
-        note: String,
-        time: String?
-    ): PendingIntent {
+    private fun Intent.putItemExtras(item: Item) {
+        putExtra(NotificationScheduler.EXTRA_ITEM_ID, item.id)
+        putExtra(NotificationScheduler.EXTRA_ITEM_TYPE, item.type.name)
+        putExtra(NotificationScheduler.EXTRA_ITEM_TITLE, item.title)
+        putExtra(NotificationScheduler.EXTRA_ITEM_NOTE, item.note)
+        putExtra(NotificationScheduler.EXTRA_ITEM_TIME, item.time)
+        item.date?.let { putExtra(NotificationScheduler.EXTRA_ITEM_DATE, it) }
+        putExtra(NotificationScheduler.EXTRA_ITEM_REPEAT, item.repeat.name)
+        putExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, item.remindBeforeMinutes)
+    }
+
+    private fun actionPendingIntent(context: Context, item: Item, action: String): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             this.action = action
-            putExtra(NotificationScheduler.EXTRA_ITEM_ID, itemId)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TYPE, type.name)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TITLE, title)
-            putExtra(NotificationScheduler.EXTRA_ITEM_NOTE, note)
-            putExtra(NotificationScheduler.EXTRA_ITEM_TIME, time)
+            putItemExtras(item)
         }
         return PendingIntent.getBroadcast(
             context,
-            "$action$itemId".hashCode(),
+            "$action${item.id}".hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

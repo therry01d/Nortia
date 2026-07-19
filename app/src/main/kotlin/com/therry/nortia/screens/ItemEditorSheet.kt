@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +20,7 @@ import com.therry.nortia.data.Category
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Priority
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.AccentSoft
 import com.therry.nortia.ui.theme.Hairline
@@ -34,6 +37,14 @@ private val remindOptions = listOf(
     30 to "30 min antes",
     60 to "1 hora antes",
     1440 to "1 día antes"
+)
+
+private val repeatOptions = listOf(
+    Repeat.NINGUNO to "No se repite",
+    Repeat.DIARIO to "Cada día",
+    Repeat.SEMANAL to "Cada semana",
+    Repeat.MENSUAL to "Cada mes",
+    Repeat.ANUAL to "Cada año"
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,6 +67,7 @@ fun ItemEditorSheet(
     var note by remember { mutableStateOf(TextFieldValue(editing?.note ?: "")) }
     var remind by remember { mutableStateOf(editing?.remind ?: true) }
     var remindBefore by remember { mutableStateOf(editing?.remindBeforeMinutes ?: 10) }
+    var repeat by remember { mutableStateOf(editing?.repeat ?: Repeat.NINGUNO) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showDatePicker by remember { mutableStateOf(false) }
@@ -66,7 +78,9 @@ fun ItemEditorSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(bottom = 24.dp)
         ) {
             Text(
@@ -132,6 +146,8 @@ fun ItemEditorSheet(
                     checked = hasTime,
                     onToggle = { hasTime = it }
                 )
+                FieldLabel("Repite")
+                RepeatDropdown(selected = repeat, onSelect = { repeat = it })
             }
 
             FieldLabel("Categoría")
@@ -202,7 +218,8 @@ fun ItemEditorSheet(
                                 note = note.text.trim(),
                                 done = editing?.done ?: false,
                                 remind = remind && !noDate,
-                                remindBeforeMinutes = remindBefore
+                                remindBeforeMinutes = remindBefore,
+                                repeat = if (noDate) Repeat.NINGUNO else repeat
                             )
                         )
                     },
@@ -324,6 +341,35 @@ private fun SwitchRow(label: String, checked: Boolean, onToggle: (Boolean) -> Un
     ) {
         Text(label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         Switch(checked = checked, onCheckedChange = onToggle)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RepeatDropdown(selected: Repeat, onSelect: (Repeat) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val currentLabel = repeatOptions.firstOrNull { it.first == selected }?.second ?: "No se repite"
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+        OutlinedTextField(
+            value = currentLabel,
+            onValueChange = {},
+            readOnly = true,
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            repeatOptions.forEach { (value, label) ->
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    onClick = {
+                        onSelect(value)
+                        expanded = false
+                    }
+                )
+            }
+        }
     }
 }
 

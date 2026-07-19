@@ -6,7 +6,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import com.therry.nortia.data.Item
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.util.RecurrenceUtils
 
 object NotificationScheduler {
 
@@ -15,11 +17,21 @@ object NotificationScheduler {
     const val EXTRA_ITEM_TITLE = "extra_item_title"
     const val EXTRA_ITEM_NOTE = "extra_item_note"
     const val EXTRA_ITEM_TIME = "extra_item_time"
+    const val EXTRA_ITEM_DATE = "extra_item_date"
+    const val EXTRA_ITEM_REPEAT = "extra_item_repeat"
+    const val EXTRA_ITEM_REMIND_BEFORE = "extra_item_remind_before"
 
-    /** Momento exacto del disparo: fecha+hora del item menos el aviso previo. Null si no tiene fecha. */
-    fun triggerAtMillis(item: Item): Long? {
-        val date = item.date ?: return null
-        val base = DateTimeUtils.combineDateAndTime(date, item.time)
+    /**
+     * Momento exacto del disparo: fecha+hora de la próxima ocurrencia (>= [searchFrom]
+     * para items recurrentes) menos el aviso previo. Null si no hay ocurrencia futura.
+     */
+    fun triggerAtMillis(item: Item, searchFrom: Long = DateTimeUtils.today()): Long? {
+        val occurrenceDate = if (item.repeat == Repeat.NINGUNO) {
+            item.date
+        } else {
+            RecurrenceUtils.nextOccurrenceAtOrAfter(item, searchFrom)
+        } ?: return null
+        val base = DateTimeUtils.combineDateAndTime(occurrenceDate, item.time)
         return base - item.remindBeforeMinutes * 60_000L
     }
 
@@ -49,6 +61,14 @@ object NotificationScheduler {
         }
     }
 
+    /** Programa la ocurrencia siguiente de un item recurrente, después de que ya sonó la de hoy. */
+    fun scheduleNextRecurrence(context: Context, item: Item) {
+        if (item.repeat == Repeat.NINGUNO) return
+        val tomorrow = DateTimeUtils.addDays(DateTimeUtils.today(), 1)
+        val triggerAtMillis = triggerAtMillis(item, searchFrom = tomorrow) ?: return
+        schedule(context, item, triggerAtMillisOverride = triggerAtMillis)
+    }
+
     fun cancel(context: Context, item: Item) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         alarmManager.cancel(buildPendingIntent(context, item))
@@ -61,6 +81,9 @@ object NotificationScheduler {
             putExtra(EXTRA_ITEM_TITLE, item.title)
             putExtra(EXTRA_ITEM_NOTE, item.note)
             putExtra(EXTRA_ITEM_TIME, item.time)
+            item.date?.let { putExtra(EXTRA_ITEM_DATE, it) }
+            putExtra(EXTRA_ITEM_REPEAT, item.repeat.name)
+            putExtra(EXTRA_ITEM_REMIND_BEFORE, item.remindBeforeMinutes)
         }
         return PendingIntent.getBroadcast(
             context,

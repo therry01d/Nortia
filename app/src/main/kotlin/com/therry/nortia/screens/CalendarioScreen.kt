@@ -25,6 +25,7 @@ import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.Hairline
 import com.therry.nortia.ui.theme.Muted
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.util.RecurrenceUtils
 
 @Composable
 fun CalendarioScreen(
@@ -37,12 +38,6 @@ fun CalendarioScreen(
     onToggleDone: (Item) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val marksByDay = remember(items) {
-        items.filter { it.date != null }
-            .groupBy { it.date!! }
-            .mapValues { (_, list) -> list.map { it.category }.distinct() }
-    }
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -61,7 +56,7 @@ fun CalendarioScreen(
             MonthGrid(
                 calCursor = calCursor,
                 selDay = selDay,
-                marksByDay = marksByDay,
+                items = items,
                 onDayClick = onSelDayChange
             )
             Text(
@@ -73,7 +68,7 @@ fun CalendarioScreen(
             )
         }
 
-        val dayItems = items.filter { it.date == selDay }
+        val dayItems = items.filter { RecurrenceUtils.occursOn(it, selDay) }
         if (dayItems.isEmpty()) {
             item {
                 Text(
@@ -152,7 +147,7 @@ private fun WeekDaysRow() {
 private fun MonthGrid(
     calCursor: Long,
     selDay: Long,
-    marksByDay: Map<Long, List<com.therry.nortia.data.Category>>,
+    items: List<Item>,
     onDayClick: (Long) -> Unit
 ) {
     val days = DateTimeUtils.monthGrid(calCursor)
@@ -164,7 +159,11 @@ private fun MonthGrid(
                 week.forEach { day ->
                     val isToday = day.dateMillis == today
                     val isSelected = day.dateMillis == selDay
-                    val marks = marksByDay[day.dateMillis].orEmpty()
+                    val marks = remember(items, day.dateMillis) {
+                        items.filter { RecurrenceUtils.occursOn(it, day.dateMillis) }
+                            .map { it.category }
+                            .distinct()
+                    }
                     Box(
                         modifier = Modifier
                             .weight(1f)

@@ -16,6 +16,7 @@ import com.therry.nortia.ui.components.ItemCard
 import com.therry.nortia.ui.components.SectionLabel
 import com.therry.nortia.ui.theme.Muted
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.util.RecurrenceUtils
 
 @Composable
 fun SemanaScreen(
@@ -25,7 +26,7 @@ fun SemanaScreen(
     modifier: Modifier = Modifier
 ) {
     val today = DateTimeUtils.today()
-    val weekDays = (0..6).map { offset -> DateTimeUtils.addDays(today, offset) }
+    val weekDays = (1..7).map { offset -> DateTimeUtils.addDays(today, offset) }
 
     LazyColumn(
         modifier = modifier
@@ -35,7 +36,7 @@ fun SemanaScreen(
     ) {
         weekDays.forEach { day ->
             val dayItems = items
-                .filter { it.date == day && !(it.type == ItemType.TAREA && it.done) }
+                .filter { RecurrenceUtils.occursOn(it, day) && !(it.type == ItemType.TAREA && it.done) }
                 .sortedWith(compareBy({ it.time == null }, { it.time }))
 
             item(key = "label-$day") {
@@ -52,7 +53,7 @@ fun SemanaScreen(
                     )
                 }
             } else {
-                items(dayItems, key = { it.id }) { it2 ->
+                items(dayItems, key = { "$day-${it.id}" }) { it2 ->
                     ItemCard(
                         item = it2,
                         onClick = { onItemClick(it2) },

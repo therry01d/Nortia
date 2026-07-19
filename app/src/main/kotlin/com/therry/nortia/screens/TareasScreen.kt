@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Priority
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.ui.components.EmptyState
 import com.therry.nortia.ui.components.ItemCard
 import com.therry.nortia.ui.components.SectionLabel
@@ -30,6 +31,7 @@ import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.Muted
 import com.therry.nortia.ui.theme.Personal
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.util.RecurrenceUtils
 
 private enum class TareaFilter(val label: String) {
     PENDIENTES("Pendientes"),
@@ -38,6 +40,11 @@ private enum class TareaFilter(val label: String) {
 }
 
 private val priorityRank = mapOf(Priority.ALTA to 0, Priority.MEDIA to 1, Priority.BAJA to 2)
+
+/** Fecha "efectiva" para agrupar/ordenar: la próxima ocurrencia si es recurrente. */
+private fun effectiveDate(item: Item, today: Long): Long? =
+    if (item.repeat == Repeat.NINGUNO) item.date
+    else RecurrenceUtils.nextOccurrenceAtOrAfter(item, today) ?: item.date
 
 @Composable
 fun TareasScreen(
@@ -52,12 +59,12 @@ fun TareasScreen(
     var tareas = items.filter { it.type == ItemType.TAREA }
     tareas = when (filter) {
         TareaFilter.PENDIENTES -> tareas.filter { !it.done }
-        TareaFilter.HOY -> tareas.filter { !it.done && it.date == today }
+        TareaFilter.HOY -> tareas.filter { !it.done && effectiveDate(it, today) == today }
         TareaFilter.HECHAS -> tareas.filter { it.done }
     }
     tareas = tareas.sortedWith(
         compareBy(
-            { it.date ?: Long.MAX_VALUE },
+            { effectiveDate(it, today) ?: Long.MAX_VALUE },
             { priorityRank[it.priority] ?: 3 }
         )
     )
@@ -86,7 +93,7 @@ fun TareasScreen(
         ) {
             var lastGroup = ""
             tareas.forEachIndexed { index, tarea ->
-                val date = tarea.date
+                val date = effectiveDate(tarea, today)
                 val group = when {
                     tarea.done -> "Completadas"
                     date == null -> "Sin fecha"

@@ -20,4 +20,10 @@ class Converters {
 
     @TypeConverter
     fun toPriority(value: String?): Priority? = value?.let { Priority.valueOf(it) }
+
+    @TypeConverter
+    fun fromRepeat(value: Repeat): String = value.name
+
+    @TypeConverter
+    fun toRepeat(value: String): Repeat = Repeat.valueOf(value)
 }
