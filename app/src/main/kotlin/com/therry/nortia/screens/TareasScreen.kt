@@ -5,7 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +29,7 @@ import com.therry.nortia.ui.components.EmptyState
 import com.therry.nortia.ui.components.ItemCard
 import com.therry.nortia.ui.components.SectionLabel
 import com.therry.nortia.ui.theme.Accent
+import com.therry.nortia.ui.theme.Hairline
 import com.therry.nortia.ui.theme.Muted
 import com.therry.nortia.ui.theme.Personal
 import com.therry.nortia.util.DateTimeUtils
@@ -41,10 +43,36 @@ private enum class TareaFilter(val label: String) {
 
 private val priorityRank = mapOf(Priority.ALTA to 0, Priority.MEDIA to 1, Priority.BAJA to 2)
 
+private sealed class TareaRow {
+    data class SectionHeader(val label: String, val color: Color) : TareaRow()
+    data class TaskRow(val item: Item) : TareaRow()
+}
+
 /** Fecha "efectiva" para agrupar/ordenar: la próxima ocurrencia si es recurrente. */
 private fun effectiveDate(item: Item, today: Long): Long? =
     if (item.repeat == Repeat.NINGUNO) item.date
     else RecurrenceUtils.nextOccurrenceAtOrAfter(item, today) ?: item.date
+
+private fun buildRows(tareas: List<Item>, today: Long): List<TareaRow> {
+    val rows = mutableListOf<TareaRow>()
+    var lastGroup = ""
+    for (tarea in tareas) {
+        val date = effectiveDate(tarea, today)
+        val group = when {
+            tarea.done -> "Completadas"
+            date == null -> "Sin fecha"
+            date < today -> "Atrasadas"
+            date == today -> "Hoy"
+            else -> "Próximas"
+        }
+        if (group != lastGroup) {
+            rows.add(TareaRow.SectionHeader(group, if (group == "Atrasadas") Personal else Muted))
+            lastGroup = group
+        }
+        rows.add(TareaRow.TaskRow(tarea))
+    }
+    return rows
+}
 
 @Composable
 fun TareasScreen(
@@ -69,6 +97,8 @@ fun TareasScreen(
         )
     )
 
+    val rows = buildRows(tareas, today)
+
     Column(modifier = modifier.fillMaxSize()) {
         SegmentedControl(
             selected = filter,
@@ -76,44 +106,37 @@ fun TareasScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        if (tareas.isEmpty()) {
+        if (rows.isEmpty()) {
             if (filter == TareaFilter.HECHAS) {
                 EmptyState("📋", "Aún nada completado", "Las tareas terminadas aparecen aquí.")
             } else {
                 EmptyState("🎯", "Sin tareas", "Toca + para crear una tarea.")
             }
-            return@Column
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(bottom = 96.dp)
-        ) {
-            var lastGroup = ""
-            tareas.forEachIndexed { index, tarea ->
-                val date = effectiveDate(tarea, today)
-                val group = when {
-                    tarea.done -> "Completadas"
-                    date == null -> "Sin fecha"
-                    date < today -> "Atrasadas"
-                    date == today -> "Hoy"
-                    else -> "Próximas"
-                }
-                if (group != lastGroup) {
-                    item(key = "label-$group-$index") {
-                        SectionLabel(group, color = if (group == "Atrasadas") Personal else Muted)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(bottom = 96.dp)
+            ) {
+                itemsIndexed(
+                    items = rows,
+                    key = { index, row ->
+                        when (row) {
+                            is TareaRow.SectionHeader -> "header-$index"
+                            is TareaRow.TaskRow -> row.item.id
+                        }
                     }
-                    lastGroup = group
-                }
-                item(key = tarea.id) {
-                    ItemCard(
-                        item = tarea,
-                        onClick = { onItemClick(tarea) },
-                        onToggleDone = { onToggleDone(tarea) },
-                        modifier = Modifier.padding(bottom = 9.dp)
-                    )
+                ) { _, row ->
+                    when (row) {
+                        is TareaRow.SectionHeader -> SectionLabel(row.label, color = row.color)
+                        is TareaRow.TaskRow -> ItemCard(
+                            item = row.item,
+                            onClick = { onItemClick(row.item) },
+                            onToggleDone = { onToggleDone(row.item) },
+                            modifier = Modifier.padding(bottom = 9.dp)
+                        )
+                    }
                 }
             }
         }
@@ -131,7 +154,7 @@ private fun SegmentedControl(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface, shape)
-            .border(1.dp, com.therry.nortia.ui.theme.Hairline, shape)
+            .border(1.dp, Hairline, shape)
             .padding(3.dp)
     ) {
         TareaFilter.entries.forEach { f ->
@@ -140,7 +163,7 @@ private fun SegmentedControl(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(if (isSel) Accent else androidx.compose.ui.graphics.Color.Transparent)
+                    .background(if (isSel) Accent else Color.Transparent)
                     .clickable { onSelect(f) }
                     .padding(vertical = 8.dp),
                 contentAlignment = Alignment.Center
@@ -149,7 +172,7 @@ private fun SegmentedControl(
                     text = f.label,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isSel) androidx.compose.ui.graphics.Color.White else Muted
+                    color = if (isSel) Color.White else Muted
                 )
             }
         }
