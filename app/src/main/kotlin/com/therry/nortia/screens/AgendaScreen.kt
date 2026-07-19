@@ -19,7 +19,6 @@ import com.therry.nortia.AgendaViewModel
 import com.therry.nortia.data.Item
 import com.therry.nortia.ui.components.AgendaBottomNav
 import com.therry.nortia.ui.components.AppTab
-import com.therry.nortia.ui.components.ScreenErrorBoundary
 import com.therry.nortia.ui.components.TopHeader
 import com.therry.nortia.util.DateTimeUtils
 
@@ -71,37 +70,35 @@ fun AgendaScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            ScreenErrorBoundary(key = currentTab) {
-                when (currentTab) {
-                    AppTab.HOY -> HoyScreen(
-                        items = items,
-                        onItemClick = { editingItem = it; showEditor = true },
-                        onToggleDone = { viewModel.toggleDone(it) },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    AppTab.SEMANA -> SemanaScreen(
-                        items = items,
-                        onItemClick = { editingItem = it; showEditor = true },
-                        onToggleDone = { viewModel.toggleDone(it) },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    AppTab.CALENDARIO -> CalendarioScreen(
-                        items = items,
-                        calCursor = calCursor,
-                        onCalCursorChange = { calCursor = it },
-                        selDay = selDay,
-                        onSelDayChange = { selDay = it },
-                        onItemClick = { editingItem = it; showEditor = true },
-                        onToggleDone = { viewModel.toggleDone(it) },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    AppTab.TAREAS -> TareasScreen(
-                        items = items,
-                        onItemClick = { editingItem = it; showEditor = true },
-                        onToggleDone = { viewModel.toggleDone(it) },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+            when (currentTab) {
+                AppTab.HOY -> HoyScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.SEMANA -> SemanaScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.CALENDARIO -> CalendarioScreen(
+                    items = items,
+                    calCursor = calCursor,
+                    onCalCursorChange = { calCursor = it },
+                    selDay = selDay,
+                    onSelDayChange = { selDay = it },
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.TAREAS -> TareasScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }
