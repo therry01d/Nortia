@@ -33,3 +33,25 @@ jobs:
         with:
           name: nortia-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Decode release keystore
+        if: ${{ secrets.NORTIA_KEYSTORE_BASE64 != '' }}
+        env:
+          NORTIA_KEYSTORE_BASE64: ${{ secrets.NORTIA_KEYSTORE_BASE64 }}
+        run: echo "$NORTIA_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/nortia-release.keystore"
+
+      - name: Build release APK
+        if: ${{ secrets.NORTIA_KEYSTORE_BASE64 != '' }}
+        env:
+          NORTIA_KEYSTORE_PATH: ${{ runner.temp }}/nortia-release.keystore
+          NORTIA_KEYSTORE_PASSWORD: ${{ secrets.NORTIA_KEYSTORE_PASSWORD }}
+          NORTIA_KEY_ALIAS: nortia
+          NORTIA_KEY_PASSWORD: ${{ secrets.NORTIA_KEYSTORE_PASSWORD }}
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload release APK
+        if: ${{ secrets.NORTIA_KEYSTORE_BASE64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nortia-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
