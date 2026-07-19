@@ -26,20 +26,6 @@ android {
         kotlinCompilerExtensionVersion = "1.5.4"
     }
 
-    // Credenciales de firma pasadas por variables de entorno (secrets en CI).
-    // Si no están presentes, el release queda sin firmar y assembleRelease igual compila.
-    val keystorePath = System.getenv("NORTIA_KEYSTORE_PATH")
-    signingConfigs {
-        if (keystorePath != null) {
-            create("release") {
-                storeFile = file(keystorePath)
-                storePassword = System.getenv("NORTIA_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("NORTIA_KEY_ALIAS")
-                keyPassword = System.getenv("NORTIA_KEY_PASSWORD")
-            }
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -47,9 +33,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (keystorePath != null) {
-                signingConfig = signingConfigs.getByName("release")
-            }
+            // Firmado con la keystore de debug para poder instalar el release
+            // directo sin gestionar una keystore propia. No sirve para Play Store.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
