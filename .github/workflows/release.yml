@@ -1,0 +1,41 @@
+name: Release APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag para este release (ej. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" \
+            app/build/outputs/apk/release/app-release.apk \
+            --title "Nortia ${{ inputs.tag }}" \
+            --notes "APK release firmado con la keystore de debug (autofirmado, no apto para Google Play). Instalar habilitando \"orígenes desconocidos\" en el teléfono." \
+            --repo "${{ github.repository }}"
