@@ -11,6 +11,7 @@ import com.therry.nortia.ui.theme.Muted
 
 enum class AppTab(val label: String, val emoji: String) {
     HOY("Hoy", "☀️"),
+    SEMANA("Semana", "📆"),
     CALENDARIO("Calendario", "🗓️"),
     TAREAS("Tareas", "✓")
 }

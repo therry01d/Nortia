@@ -41,6 +41,7 @@ fun AgendaScreen(
 
     val (greet, title) = when (currentTab) {
         AppTab.HOY -> hoyGreeting() to hoyTitle()
+        AppTab.SEMANA -> "Próximos 7 días" to "Semana"
         AppTab.CALENDARIO -> "Calendario" to "Agenda"
         AppTab.TAREAS -> "Pendientes" to "Tareas"
     }
@@ -71,6 +72,12 @@ fun AgendaScreen(
         Box(modifier = Modifier.padding(paddingValues)) {
             when (currentTab) {
                 AppTab.HOY -> HoyScreen(
+                    items = items,
+                    onItemClick = { editingItem = it; showEditor = true },
+                    onToggleDone = { viewModel.toggleDone(it) },
+                    modifier = Modifier.fillMaxSize()
+                )
+                AppTab.SEMANA -> SemanaScreen(
                     items = items,
                     onItemClick = { editingItem = it; showEditor = true },
                     onToggleDone = { viewModel.toggleDone(it) },

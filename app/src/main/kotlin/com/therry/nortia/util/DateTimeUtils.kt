@@ -48,6 +48,27 @@ object DateTimeUtils {
         return calendar.timeInMillis
     }
 
+    fun addDays(dateMillis: Long, delta: Int): Long {
+        val calendar = Calendar.getInstance().apply {
+            timeInMillis = dateMillis
+            add(Calendar.DAY_OF_MONTH, delta)
+        }
+        return startOfDay(calendar.timeInMillis)
+    }
+
+    fun formatDayHeader(millis: Long): String {
+        val today = today()
+        return when (millis) {
+            today -> "Hoy"
+            addDays(today, 1) -> "Mañana"
+            else -> {
+                val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+                val dow = DIAS[calendar.get(Calendar.DAY_OF_WEEK) - 1].replaceFirstChar { it.uppercase() }
+                "$dow ${calendar.get(Calendar.DAY_OF_MONTH)}"
+            }
+        }
+    }
+
     fun addMonths(monthAnchorMillis: Long, delta: Int): Long {
         val calendar = Calendar.getInstance().apply {
             timeInMillis = monthAnchorMillis
