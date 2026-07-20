@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.media.RingtoneManager
 import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -85,6 +86,11 @@ class ReminderReceiver : BroadcastReceiver() {
             .setContentIntent(fullScreenPendingIntent)
             .setAutoCancel(true)
             .setOngoing(false)
+            // Ignorados en Android 8+ (mandan los del canal); quedan como respaldo
+            // para versiones anteriores donde el sonido/vibración se define acá.
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+            .setVibrate(NotificationHelper.VIBRATION_PATTERN)
+            .setLights(0xFFFFFFFF.toInt(), 300, 1000)
             .addAction(0, context.getString(R.string.action_dismiss), dismissPendingIntent)
             .addAction(0, context.getString(R.string.action_snooze), snoozePendingIntent)
             .build()
