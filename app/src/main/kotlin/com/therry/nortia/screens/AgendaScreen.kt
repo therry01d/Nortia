@@ -39,6 +39,7 @@ fun AgendaScreen(
 
     var editingItem by remember { mutableStateOf<Item?>(null) }
     var showEditor by remember { mutableStateOf(false) }
+    var showDiagnostics by remember { mutableStateOf(false) }
 
     val defaultDateForNew = if (currentTab == AppTab.CALENDARIO) selDay else DateTimeUtils.today()
 
@@ -55,7 +56,9 @@ fun AgendaScreen(
                 greet = greet,
                 title = title,
                 notificationsEnabled = notificationsEnabled,
-                onBellClick = onRequestNotifications
+                onBellClick = {
+                    if (notificationsEnabled) showDiagnostics = true else onRequestNotifications()
+                }
             )
         },
         bottomBar = {
@@ -127,5 +130,9 @@ fun AgendaScreen(
                 }
             }
         )
+    }
+
+    if (showDiagnostics) {
+        NotificationDiagnosticsDialog(onDismiss = { showDiagnostics = false })
     }
 }
