@@ -6,6 +6,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.Muted
 
@@ -18,7 +19,10 @@ enum class AppTab(val label: String, val emoji: String) {
 
 @Composable
 fun AgendaBottomNav(current: AppTab, onSelect: (AppTab) -> Unit) {
-    NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp
+    ) {
         AppTab.entries.forEach { tab ->
             NavigationBarItem(
                 selected = tab == current,

@@ -3,9 +3,12 @@ package com.therry.nortia.screens
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,7 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import com.therry.nortia.AgendaViewModel
 import com.therry.nortia.data.Item
 import com.therry.nortia.ui.components.AgendaBottomNav
@@ -63,9 +66,13 @@ fun AgendaScreen(
                 onClick = {
                     editingItem = null
                     showEditor = true
-                }
+                },
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 8.dp
+                )
             ) {
-                Text("+", fontSize = 26.sp)
+                Icon(Icons.Filled.Add, contentDescription = "Nuevo")
             }
         }
     ) { paddingValues ->

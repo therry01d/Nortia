@@ -10,6 +10,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
         viewModel.setNotificationsEnabled(hasNotificationPermission())
         requestExactAlarmPermissionIfNeeded()
         requestFullScreenIntentPermissionIfNeeded()
+        requestIgnoreBatteryOptimizationsIfNeeded()
 
         setContent {
             NortiaTheme {
@@ -106,6 +108,22 @@ class MainActivity : ComponentActivity() {
                 }
                 safeStartActivity(intent)
             }
+        }
+    }
+
+    /**
+     * Muchos fabricantes (Xiaomi, Samsung, Huawei, etc.) matan las alarmas de
+     * apps en segundo plano para ahorrar batería, aunque tengan el permiso de
+     * alarma exacta: por eso los recordatorios pueden andar bien al principio
+     * y dejar de sonar días después. Pedir esta exclusión reduce ese riesgo.
+     */
+    private fun requestIgnoreBatteryOptimizationsIfNeeded() {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            safeStartActivity(intent)
         }
     }
 

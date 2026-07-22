@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -66,9 +67,15 @@ class AgendaViewModel(
         }
     }
 
+    /**
+     * Lee directo de Room (no de [items].value) porque ese StateFlow recién arranca
+     * a coleccionar cuando alguien lo observa desde la UI; si esto corre antes
+     * (p. ej. en el arranque de MainActivity), [items].value todavía sería la
+     * lista vacía inicial y no se reprogramaría ningún recordatorio.
+     */
     private fun rescheduleAll() {
         viewModelScope.launch {
-            items.value.forEach { NotificationScheduler.schedule(getApplication(), it) }
+            dao.getAll().first().forEach { NotificationScheduler.schedule(getApplication(), it) }
         }
     }
 

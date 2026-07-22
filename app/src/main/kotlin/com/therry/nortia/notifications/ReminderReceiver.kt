@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.R
@@ -18,6 +19,16 @@ import com.therry.nortia.util.DateTimeUtils
 class ReminderReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        // Un recordatorio corrupto o inesperado no debe tirar abajo el proceso
+        // (y con él, la posibilidad de mostrar cualquier otro recordatorio futuro).
+        try {
+            handleReceive(context, intent)
+        } catch (e: Throwable) {
+            Log.e("Nortia", "Error mostrando recordatorio", e)
+        }
+    }
+
+    private fun handleReceive(context: Context, intent: Intent) {
         val itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
         if (itemId == -1) return
 
