@@ -3,6 +3,7 @@ package com.therry.nortia
 import android.Manifest
 import android.app.AlarmManager
 import android.app.NotificationManager
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,7 +61,7 @@ class MainActivity : ComponentActivity() {
             val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             }
-            startActivity(intent)
+            safeStartActivity(intent)
             return
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -84,7 +86,7 @@ class MainActivity : ComponentActivity() {
                 val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
                     data = Uri.parse("package:$packageName")
                 }
-                startActivity(intent)
+                safeStartActivity(intent)
             }
         }
     }
@@ -102,8 +104,21 @@ class MainActivity : ComponentActivity() {
                 val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
                     data = Uri.parse("package:$packageName")
                 }
-                startActivity(intent)
+                safeStartActivity(intent)
             }
+        }
+    }
+
+    /**
+     * Algunas versiones de fabricantes no traen la pantalla de Ajustes que
+     * corresponde a ciertas acciones especiales (ej. permiso de pantalla
+     * completa en Android 14): evita que la app crashee si no existe.
+     */
+    private fun safeStartActivity(intent: Intent) {
+        try {
+            startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            Log.w("Nortia", "No se pudo abrir la pantalla de ajustes: ${intent.action}", e)
         }
     }
 }
