@@ -37,10 +37,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         NotificationHelper.createChannel(this)
-        viewModel.setNotificationsEnabled(hasNotificationPermission())
-        requestExactAlarmPermissionIfNeeded()
-        requestFullScreenIntentPermissionIfNeeded()
-        requestIgnoreBatteryOptimizationsIfNeeded()
 
         setContent {
             NortiaTheme {
@@ -55,6 +51,36 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.setNotificationsEnabled(hasNotificationPermission())
+        requestNextMissingPermission()
+    }
+
+    /**
+     * Pide los permisos especiales de notificaciones de a uno por vez: si se
+     * lanzan los tres juntos (alarma exacta, pantalla completa, batería) al
+     * abrir la app, es fácil que el usuario solo llegue a resolver el primero
+     * y los otros dos queden sin conceder sin que se note. Cada vez que la
+     * app vuelve a primer plano (p. ej. al volver de Ajustes) se revisa cuál
+     * falta y se pide solo esa, en orden.
+     */
+    private fun requestNextMissingPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            if (!alarmManager.canScheduleExactAlarms()) {
+                requestExactAlarmPermission()
+                return
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 34) {
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            if (!notificationManager.canUseFullScreenIntent()) {
+                requestFullScreenIntentPermission()
+                return
+            }
+        }
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            requestIgnoreBatteryOptimizations()
+        }
     }
 
     private fun onBellClicked() {
@@ -81,16 +107,11 @@ class MainActivity : ComponentActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun requestExactAlarmPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (!alarmManager.canScheduleExactAlarms()) {
-                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                safeStartActivity(intent)
-            }
+    private fun requestExactAlarmPermission() {
+        val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+            data = Uri.parse("package:$packageName")
         }
+        safeStartActivity(intent)
     }
 
     /**
@@ -99,16 +120,11 @@ class MainActivity : ComponentActivity() {
      * (no hay diálogo del sistema); sin él, el recordatorio se degrada a una
      * notificación normal aunque el dispositivo esté bloqueado.
      */
-    private fun requestFullScreenIntentPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= 34) {
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            if (!notificationManager.canUseFullScreenIntent()) {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                safeStartActivity(intent)
-            }
+    private fun requestFullScreenIntentPermission() {
+        val intent = Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+            data = Uri.parse("package:$packageName")
         }
+        safeStartActivity(intent)
     }
 
     /**
@@ -117,14 +133,11 @@ class MainActivity : ComponentActivity() {
      * alarma exacta: por eso los recordatorios pueden andar bien al principio
      * y dejar de sonar días después. Pedir esta exclusión reduce ese riesgo.
      */
-    private fun requestIgnoreBatteryOptimizationsIfNeeded() {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:$packageName")
-            }
-            safeStartActivity(intent)
+    private fun requestIgnoreBatteryOptimizations() {
+        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+            data = Uri.parse("package:$packageName")
         }
+        safeStartActivity(intent)
     }
 
     /**
