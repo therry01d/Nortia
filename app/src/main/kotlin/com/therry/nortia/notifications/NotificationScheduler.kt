@@ -44,20 +44,43 @@ object NotificationScheduler {
         if (triggerAtMillis == null || triggerAtMillis <= System.currentTimeMillis()) return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-            return
-        }
-
         val pendingIntent = buildPendingIntent(context, item)
 
+        // En Android 12+ las alarmas exactas requieren un permiso especial que
+        // suele venir denegado. Si no lo tenemos, NO abandonamos: caemos a una
+        // alarma inexacta (setAndAllowWhileIdle) que igual se dispara aunque el
+        // dispositivo esté en Doze, con un margen de pocos minutos. Antes esta
+        // función hacía return y el recordatorio no se programaba en absoluto,
+        // por eso las notificaciones no aparecían cuando debían.
+        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            alarmManager.canScheduleExactAlarms()
+
         try {
-            alarmManager.setExactAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP,
-                triggerAtMillis,
-                pendingIntent
-            )
+            if (canExact) {
+                alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent
+                )
+            }
         } catch (_: SecurityException) {
-            // El usuario revocó el permiso de alarmas exactas entre el chequeo y la llamada.
+            // El permiso de alarmas exactas se revocó entre el chequeo y la
+            // llamada: reintentamos con la variante inexacta, que no lo necesita.
+            try {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    triggerAtMillis,
+                    pendingIntent
+                )
+            } catch (_: Exception) {
+                // Sin nada más que hacer; se reprogramará en el próximo arranque.
+            }
         }
     }
 

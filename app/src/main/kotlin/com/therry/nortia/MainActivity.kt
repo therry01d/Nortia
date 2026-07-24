@@ -28,15 +28,20 @@ class MainActivity : ComponentActivity() {
         AgendaViewModel.factory(application)
     }
 
+    private val prefs by lazy { getSharedPreferences("nortia_perms", Context.MODE_PRIVATE) }
+
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             viewModel.setNotificationsEnabled(granted)
+            // Concedido (o no) el permiso base, seguimos con los especiales.
+            promptSpecialPermissionsOnce()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         NotificationHelper.createChannel(this)
+        requestNotificationPermissionThenSpecials()
 
         setContent {
             NortiaTheme {
@@ -50,49 +55,71 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Solo refrescamos el estado y reprogramamos: NO relanzamos pantallas de
+        // Ajustes en cada resume (eso provocaba un bucle molesto). Los permisos
+        // especiales se piden una única vez; después se gestionan desde la campana.
         viewModel.setNotificationsEnabled(hasNotificationPermission())
-        requestNextMissingPermission()
     }
 
     /**
-     * Pide los permisos especiales de notificaciones de a uno por vez: si se
-     * lanzan los tres juntos (alarma exacta, pantalla completa, batería) al
-     * abrir la app, es fácil que el usuario solo llegue a resolver el primero
-     * y los otros dos queden sin conceder sin que se note. Cada vez que la
-     * app vuelve a primer plano (p. ej. al volver de Ajustes) se revisa cuál
-     * falta y se pide solo esa, en orden.
+     * Paso 1: el permiso de notificaciones (Android 13+) sí tiene diálogo del
+     * sistema. Lo pedimos primero; cuando el usuario responde, encadenamos los
+     * permisos especiales. En versiones viejas no hace falta y vamos directo.
      */
-    private fun requestNextMissingPermission() {
+    private fun requestNotificationPermissionThenSpecials() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !hasNotificationPermission()) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.setNotificationsEnabled(hasNotificationPermission())
+            promptSpecialPermissionsOnce()
+        }
+    }
+
+    /**
+     * Paso 2: los permisos especiales (alarma exacta, pantalla completa,
+     * exclusión de batería) no tienen diálogo: hay que mandar al usuario a una
+     * pantalla de Ajustes. Para no relanzarlas en bucle, cada una se ofrece una
+     * sola vez en la vida de la instalación; si el usuario las ignora, puede
+     * volver a abrirlas cuando quiera desde el botón de la campana. Se piden en
+     * orden, una por vez, para no encimar tres pantallas de golpe.
+     */
+    private fun promptSpecialPermissionsOnce() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            if (!alarmManager.canScheduleExactAlarms()) {
+            if (!alarmManager.canScheduleExactAlarms() && markPromptedIfNeeded(KEY_EXACT_ALARM)) {
                 requestExactAlarmPermission()
                 return
             }
         }
         if (Build.VERSION.SDK_INT >= 34) {
             val notificationManager = getSystemService(NotificationManager::class.java)
-            if (!notificationManager.canUseFullScreenIntent()) {
+            if (!notificationManager.canUseFullScreenIntent() && markPromptedIfNeeded(KEY_FULL_SCREEN)) {
                 requestFullScreenIntentPermission()
                 return
             }
         }
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName) &&
+            markPromptedIfNeeded(KEY_BATTERY)
+        ) {
             requestIgnoreBatteryOptimizations()
         }
     }
 
+    /** Devuelve true (y marca como ofrecido) solo la primera vez para cada permiso. */
+    private fun markPromptedIfNeeded(key: String): Boolean {
+        if (prefs.getBoolean(key, false)) return false
+        prefs.edit().putBoolean(key, true).apply()
+        return true
+    }
+
     private fun onBellClicked() {
+        // La campana abre el diagnóstico si ya hay permiso de notificaciones;
+        // si no, lo pide. El diagnóstico permite reabrir cualquier pantalla de
+        // Ajustes que el usuario haya salteado la primera vez.
         if (hasNotificationPermission()) {
-            // Ya está habilitado; llevar al usuario a los ajustes para que pueda desactivarlo si quiere.
-            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            }
-            safeStartActivity(intent)
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            viewModel.setNotificationsEnabled(true)
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             viewModel.setNotificationsEnabled(true)
@@ -151,5 +178,11 @@ class MainActivity : ComponentActivity() {
         } catch (e: ActivityNotFoundException) {
             Log.w("Nortia", "No se pudo abrir la pantalla de ajustes: ${intent.action}", e)
         }
+    }
+
+    companion object {
+        private const val KEY_EXACT_ALARM = "prompted_exact_alarm"
+        private const val KEY_FULL_SCREEN = "prompted_full_screen"
+        private const val KEY_BATTERY = "prompted_battery"
     }
 }
