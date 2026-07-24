@@ -26,22 +26,46 @@ object RecurrenceUtils {
         if (anchor >= from) return anchor
         if (item.repeat == Repeat.NINGUNO) return null
 
+        val anchorCal = Calendar.getInstance().apply { timeInMillis = anchor }
+        val anchorDay = anchorCal.get(Calendar.DAY_OF_MONTH)
+        val anchorMonth = anchorCal.get(Calendar.MONTH)
+
         var candidate = anchor
         var guard = 0
-        while (candidate < from && guard < 10_000) {
-            candidate = advance(candidate, item.repeat)
+        while (candidate < from && guard < 12_000) {
+            candidate = advance(candidate, item.repeat, anchorDay, anchorMonth)
             guard++
         }
-        return candidate
+        return if (candidate >= from) candidate else null
     }
 
-    private fun advance(day: Long, repeat: Repeat): Long {
+    /**
+     * Avanza a la ocurrencia siguiente. Para MENSUAL/ANUAL parte del día del
+     * ancla (no del último candidato) para evitar la deriva de Calendar.add:
+     * ej. ancla el 31 → sumar mes cae en 28/29 de febrero y quedaría "pegado"
+     * al 28 para siempre. Acá se conserva el día del ancla y se saltan los meses
+     * (o años, para el 29/02) que no lo contienen, consistente con [occursOn].
+     */
+    private fun advance(day: Long, repeat: Repeat, anchorDay: Int, anchorMonth: Int): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = day }
         when (repeat) {
             Repeat.DIARIO -> calendar.add(Calendar.DAY_OF_MONTH, 1)
             Repeat.SEMANAL -> calendar.add(Calendar.DAY_OF_MONTH, 7)
-            Repeat.MENSUAL -> calendar.add(Calendar.MONTH, 1)
-            Repeat.ANUAL -> calendar.add(Calendar.YEAR, 1)
+            Repeat.MENSUAL -> {
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                do {
+                    calendar.add(Calendar.MONTH, 1)
+                } while (anchorDay > calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+                calendar.set(Calendar.DAY_OF_MONTH, anchorDay)
+            }
+            Repeat.ANUAL -> {
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.MONTH, anchorMonth)
+                do {
+                    calendar.add(Calendar.YEAR, 1)
+                } while (anchorDay > calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
+                calendar.set(Calendar.DAY_OF_MONTH, anchorDay)
+            }
             Repeat.NINGUNO -> Unit
         }
         return DateTimeUtils.startOfDay(calendar.timeInMillis)

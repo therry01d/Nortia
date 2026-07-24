@@ -3,6 +3,7 @@ package com.therry.nortia
 import android.app.Application
 import android.content.Intent
 import android.os.Process
+import com.therry.nortia.notifications.NotificationHelper
 import kotlin.system.exitProcess
 
 /**
@@ -14,6 +15,14 @@ class NortiaApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // El canal debe existir en CUALQUIER arranque del proceso, no solo cuando
+        // se abre MainActivity: si el proceso lo levanta un BroadcastReceiver (p. ej.
+        // una alarma que dispara tras reiniciar el teléfono, antes de abrir la app),
+        // postear en un canal inexistente hace que Android descarte la notificación
+        // en silencio. Application.onCreate corre antes que cualquier receiver.
+        NotificationHelper.createChannel(this)
+
         Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
             try {
                 val intent = Intent(this, CrashActivity::class.java).apply {

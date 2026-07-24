@@ -35,9 +35,13 @@ class ReminderFullScreenActivity : ComponentActivity() {
         showOverLockScreenAndWake()
 
         itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
-        val type = ItemType.valueOf(
-            intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name
-        )
+        // runCatching: si el extra viniera con un valor inesperado, valueOf lanzaría
+        // y la Activity crashearía al abrirse sobre la pantalla bloqueada.
+        val type = runCatching {
+            ItemType.valueOf(
+                intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name
+            )
+        }.getOrDefault(ItemType.RECORDATORIO)
         val title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty()
         val note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty()
         val time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME)

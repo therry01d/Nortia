@@ -56,6 +56,11 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     private fun showReminder(context: Context, intent: Intent, itemId: Int) {
+        // Defensa: el proceso puede haberlo levantado esta misma alarma tras un
+        // reinicio, sin que MainActivity se haya abierto todavía. createChannel es
+        // idempotente; garantiza que el canal exista antes de postear.
+        NotificationHelper.createChannel(context)
+
         // Algunos fabricantes no despiertan el dispositivo salvo que se sostenga
         // brevemente un wake lock al recibir la alarma con la pantalla apagada.
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -64,7 +69,14 @@ class ReminderReceiver : BroadcastReceiver() {
             "Nortia:ReminderWakeLock"
         )
         wakeLock.acquire(10_000L)
+        try {
+            postReminder(context, intent, itemId)
+        } finally {
+            if (wakeLock.isHeld) wakeLock.release()
+        }
+    }
 
+    private fun postReminder(context: Context, intent: Intent, itemId: Int) {
         val item = itemFromIntent(intent, itemId)
         val time = item.time
 
@@ -110,10 +122,6 @@ class ReminderReceiver : BroadcastReceiver() {
 
         if (item.repeat != Repeat.NINGUNO) {
             NotificationScheduler.scheduleNextRecurrence(context, item)
-        }
-
-        if (wakeLock.isHeld) {
-            wakeLock.release()
         }
     }
 

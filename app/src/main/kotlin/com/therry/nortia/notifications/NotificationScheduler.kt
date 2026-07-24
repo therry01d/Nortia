@@ -22,17 +22,34 @@ object NotificationScheduler {
     const val EXTRA_ITEM_REMIND_BEFORE = "extra_item_remind_before"
 
     /**
-     * Momento exacto del disparo: fecha+hora de la próxima ocurrencia (>= [searchFrom]
-     * para items recurrentes) menos el aviso previo. Null si no hay ocurrencia futura.
+     * Momento exacto del disparo: fecha+hora de la próxima ocurrencia menos el
+     * aviso previo. Null si no hay ocurrencia futura.
+     *
+     * Para items recurrentes NO basta con tomar la ocurrencia >= [searchFrom]:
+     * la de hoy puede tener su hora (menos el aviso) ya en el pasado. En ese caso
+     * hay que seguir avanzando a la ocurrencia siguiente hasta encontrar una cuyo
+     * disparo caiga realmente en el futuro; si no, schedule() la descartaba y el
+     * recordatorio recurrente quedaba sin reprogramarse (dejaba de sonar).
      */
     fun triggerAtMillis(item: Item, searchFrom: Long = DateTimeUtils.today()): Long? {
-        val occurrenceDate = if (item.repeat == Repeat.NINGUNO) {
-            item.date
-        } else {
-            RecurrenceUtils.nextOccurrenceAtOrAfter(item, searchFrom)
-        } ?: return null
-        val base = DateTimeUtils.combineDateAndTime(occurrenceDate, item.time)
-        return base - item.remindBeforeMinutes * 60_000L
+        if (item.repeat == Repeat.NINGUNO) {
+            val date = item.date ?: return null
+            val base = DateTimeUtils.combineDateAndTime(date, item.time)
+            return base - item.remindBeforeMinutes * 60_000L
+        }
+
+        val now = System.currentTimeMillis()
+        var from = searchFrom
+        var guard = 0
+        while (guard < 3660) { // ~10 años de ocurrencias diarias, tope de seguridad
+            val occurrenceDate = RecurrenceUtils.nextOccurrenceAtOrAfter(item, from) ?: return null
+            val base = DateTimeUtils.combineDateAndTime(occurrenceDate, item.time)
+            val trigger = base - item.remindBeforeMinutes * 60_000L
+            if (trigger > now) return trigger
+            from = DateTimeUtils.addDays(occurrenceDate, 1)
+            guard++
+        }
+        return null
     }
 
     fun schedule(context: Context, item: Item, triggerAtMillisOverride: Long? = null) {
