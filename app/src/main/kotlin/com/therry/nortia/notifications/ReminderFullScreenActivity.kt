@@ -1,6 +1,7 @@
 package com.therry.nortia.notifications
 
 import android.app.KeyguardManager
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -9,6 +10,9 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -19,6 +23,7 @@ import com.therry.nortia.R
 import com.therry.nortia.data.Category
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
+import com.therry.nortia.data.Repeat
 import com.therry.nortia.ui.theme.NortiaTheme
 import com.therry.nortia.util.DateTimeUtils
 
@@ -28,44 +33,74 @@ import com.therry.nortia.util.DateTimeUtils
  */
 class ReminderFullScreenActivity : ComponentActivity() {
 
-    private var itemId: Int = -1
+    private var current by mutableStateOf<Item?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         showOverLockScreenAndWake()
 
-        itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
-        // runCatching: si el extra viniera con un valor inesperado, valueOf lanzaría
-        // y la Activity crashearía al abrirse sobre la pantalla bloqueada.
+        current = itemFromIntent(intent)
+
+        setContent {
+            NortiaTheme {
+                current?.let { item ->
+                    ReminderScreen(
+                        item = item,
+                        onDismiss = { dismiss(item) },
+                        onSnooze = { snooze(item) }
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Un segundo recordatorio que dispara mientras esta Activity (singleInstance)
+     * sigue visible llega por acá, NO por onCreate. Sin esto se mostraría el
+     * recordatorio viejo con datos del primero.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        showOverLockScreenAndWake()
+        current = itemFromIntent(intent)
+    }
+
+    /**
+     * Reconstruye el Item desde los extras leyendo el MISMO conjunto que
+     * ReminderReceiver.itemFromIntent: incluir repeat/date/remindBefore es lo
+     * que mantiene viva la recurrencia al posponer desde la pantalla completa.
+     */
+    private fun itemFromIntent(intent: Intent): Item {
+        val id = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
         val type = runCatching {
             ItemType.valueOf(
                 intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TYPE) ?: ItemType.RECORDATORIO.name
             )
         }.getOrDefault(ItemType.RECORDATORIO)
-        val title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty()
-        val note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty()
-        val time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME)
-        val item = Item(
-            id = itemId,
+        val repeat = runCatching {
+            Repeat.valueOf(
+                intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_REPEAT) ?: Repeat.NINGUNO.name
+            )
+        }.getOrDefault(Repeat.NINGUNO)
+        val date = if (intent.hasExtra(NotificationScheduler.EXTRA_ITEM_DATE)) {
+            intent.getLongExtra(NotificationScheduler.EXTRA_ITEM_DATE, DateTimeUtils.today())
+        } else {
+            DateTimeUtils.today()
+        }
+        return Item(
+            id = id,
             type = type,
-            title = title,
-            date = DateTimeUtils.today(),
-            time = time,
+            title = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TITLE).orEmpty(),
+            date = date,
+            time = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_TIME),
             category = Category.PERSONAL,
             priority = null,
-            note = note,
-            remind = true
+            note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty(),
+            remind = true,
+            remindBeforeMinutes = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, 10),
+            repeat = repeat
         )
-
-        setContent {
-            NortiaTheme {
-                ReminderScreen(
-                    item = item,
-                    onDismiss = { dismiss() },
-                    onSnooze = { snooze(item) }
-                )
-            }
-        }
     }
 
     private fun showOverLockScreenAndWake() {
@@ -85,21 +120,21 @@ class ReminderFullScreenActivity : ComponentActivity() {
         }
     }
 
-    private fun dismiss() {
-        if (itemId != -1) {
-            NotificationManagerCompat.from(this).cancel(itemId)
+    private fun dismiss(item: Item) {
+        if (item.id != -1) {
+            NotificationManagerCompat.from(this).cancel(item.id)
         }
         finish()
     }
 
     private fun snooze(item: Item) {
-        if (itemId != -1) {
-            NotificationManagerCompat.from(this).cancel(itemId)
+        if (item.id != -1) {
+            NotificationManagerCompat.from(this).cancel(item.id)
         }
         NotificationScheduler.schedule(
             this,
             item,
-            triggerAtMillisOverride = System.currentTimeMillis() + 10 * 60 * 1000L
+            triggerAtMillisOverride = System.currentTimeMillis() + NotificationScheduler.SNOOZE_MILLIS
         )
         finish()
     }

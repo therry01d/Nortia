@@ -1,6 +1,7 @@
 package com.therry.nortia.util
 
 import java.util.Calendar
+import java.util.TimeZone
 
 data class CalendarDay(
     val dateMillis: Long,
@@ -46,6 +47,29 @@ object DateTimeUtils {
             set(Calendar.MINUTE, minute)
         }
         return calendar.timeInMillis
+    }
+
+    /**
+     * El DatePicker de Material3 trabaja en UTC: su `selectedDateMillis` es la
+     * medianoche UTC del día elegido. Convertimos a nuestra medianoche LOCAL del
+     * mismo día del calendario. Sin esto, en zonas con offset negativo (p. ej.
+     * Argentina UTC-3) el día se guardaba corrido -1.
+     */
+    fun pickerUtcToLocalDay(utcMillis: Long): Long {
+        val utc = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = utcMillis }
+        return Calendar.getInstance().apply {
+            clear()
+            set(utc.get(Calendar.YEAR), utc.get(Calendar.MONTH), utc.get(Calendar.DAY_OF_MONTH))
+        }.timeInMillis
+    }
+
+    /** Inverso de [pickerUtcToLocalDay]: nuestra medianoche local → medianoche UTC del mismo día, para inicializar el picker. */
+    fun localDayToPickerUtc(localMillis: Long): Long {
+        val local = Calendar.getInstance().apply { timeInMillis = localMillis }
+        return Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+            clear()
+            set(local.get(Calendar.YEAR), local.get(Calendar.MONTH), local.get(Calendar.DAY_OF_MONTH))
+        }.timeInMillis
     }
 
     fun addDays(dateMillis: Long, delta: Int): Long {

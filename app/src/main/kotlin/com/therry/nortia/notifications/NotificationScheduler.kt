@@ -21,6 +21,9 @@ object NotificationScheduler {
     const val EXTRA_ITEM_REPEAT = "extra_item_repeat"
     const val EXTRA_ITEM_REMIND_BEFORE = "extra_item_remind_before"
 
+    /** Cuánto se pospone un recordatorio al tocar "Posponer". Fuente única de verdad. */
+    const val SNOOZE_MILLIS = 10 * 60 * 1000L
+
     /**
      * Momento exacto del disparo: fecha+hora de la próxima ocurrencia menos el
      * aviso previo. Null si no hay ocurrencia futura.

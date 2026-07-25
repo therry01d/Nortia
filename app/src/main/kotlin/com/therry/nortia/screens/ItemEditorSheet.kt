@@ -98,7 +98,12 @@ fun ItemEditorSheet(
                     ItemType.RECORDATORIO to "⏰ Recordatorio"
                 ),
                 selected = type,
-                onSelect = { type = it }
+                onSelect = {
+                    type = it
+                    // "Sin fecha" solo aplica a tareas; si no se resetea, un Evento
+                    // creado desde una Tarea sin fecha quedaría con date=null e invisible.
+                    if (it != ItemType.TAREA) noDate = false
+                }
             )
 
             FieldLabel("Título")
@@ -232,12 +237,14 @@ fun ItemEditorSheet(
     }
 
     if (showDatePicker) {
-        val state = rememberDatePickerState(initialSelectedDateMillis = dateMillis)
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = DateTimeUtils.localDayToPickerUtc(dateMillis)
+        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    state.selectedDateMillis?.let { dateMillis = DateTimeUtils.startOfDay(it) }
+                    state.selectedDateMillis?.let { dateMillis = DateTimeUtils.pickerUtcToLocalDay(it) }
                     showDatePicker = false
                 }) { Text("Aceptar") }
             },

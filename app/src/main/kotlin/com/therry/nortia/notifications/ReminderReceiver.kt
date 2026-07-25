@@ -42,7 +42,7 @@ class ReminderReceiver : BroadcastReceiver() {
                 NotificationScheduler.schedule(
                     context,
                     item,
-                    triggerAtMillisOverride = System.currentTimeMillis() + SNOOZE_MILLIS
+                    triggerAtMillisOverride = System.currentTimeMillis() + NotificationScheduler.SNOOZE_MILLIS
                 )
             }
             else -> showReminder(context, intent, itemId)
@@ -178,6 +178,5 @@ class ReminderReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_DISMISS = "com.therry.nortia.ACTION_DISMISS"
         const val ACTION_SNOOZE = "com.therry.nortia.ACTION_SNOOZE"
-        private const val SNOOZE_MILLIS = 10 * 60 * 1000L
     }
 }

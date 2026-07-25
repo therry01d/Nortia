@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.data.AppDatabase
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemDao
@@ -43,6 +44,7 @@ class AgendaViewModel(
     fun updateItem(item: Item) {
         viewModelScope.launch {
             NotificationScheduler.cancel(getApplication(), item)
+            dismissActiveNotification(item)
             dao.update(item)
             NotificationScheduler.schedule(getApplication(), item)
         }
@@ -52,6 +54,7 @@ class AgendaViewModel(
         viewModelScope.launch {
             dao.delete(item)
             NotificationScheduler.cancel(getApplication(), item)
+            dismissActiveNotification(item)
         }
     }
 
@@ -61,10 +64,21 @@ class AgendaViewModel(
             dao.update(updated)
             if (updated.done) {
                 NotificationScheduler.cancel(getApplication(), updated)
+                dismissActiveNotification(updated)
             } else {
                 NotificationScheduler.schedule(getApplication(), updated)
             }
         }
+    }
+
+    /**
+     * Retira una notificación que ya esté visible en la barra. Sin esto, si el
+     * usuario borra/edita/completa un item cuyo recordatorio ya sonó, la
+     * notificación vieja sigue ahí y su botón "Posponer" reprograma un aviso
+     * fantasma de un item que ya no corresponde.
+     */
+    private fun dismissActiveNotification(item: Item) {
+        NotificationManagerCompat.from(getApplication()).cancel(item.id)
     }
 
     /**
