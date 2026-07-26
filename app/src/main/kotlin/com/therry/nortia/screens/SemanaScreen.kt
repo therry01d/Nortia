@@ -11,7 +11,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.therry.nortia.data.Item
-import com.therry.nortia.data.ItemType
 import com.therry.nortia.ui.components.ItemCard
 import com.therry.nortia.ui.components.SectionLabel
 import com.therry.nortia.ui.theme.Muted
@@ -36,7 +35,7 @@ fun SemanaScreen(
     ) {
         weekDays.forEach { day ->
             val dayItems = items
-                .filter { RecurrenceUtils.occursOn(it, day) && !(it.type == ItemType.TAREA && it.done) }
+                .filter { RecurrenceUtils.occursOn(it, day) && !it.done }
                 .sortedWith(compareBy({ it.time == null }, { it.time }))
 
             item(key = "label-$day") {

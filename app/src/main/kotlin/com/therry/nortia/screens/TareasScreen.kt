@@ -6,10 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,20 +34,26 @@ import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.Hairline
 import com.therry.nortia.ui.theme.Muted
 import com.therry.nortia.ui.theme.Personal
+import com.therry.nortia.ui.theme.PrioridadAlta
 import com.therry.nortia.util.DateTimeUtils
 import com.therry.nortia.util.RecurrenceUtils
 
-private enum class TareaFilter(val label: String) {
+private enum class DoneFilter(val label: String) {
     PENDIENTES("Pendientes"),
-    HOY("Hoy"),
     HECHAS("Hechas")
 }
 
+private val typeTabs = listOf(
+    ItemType.EVENTO to "Eventos",
+    ItemType.TAREA to "Tareas",
+    ItemType.RECORDATORIO to "Recordatorios"
+)
+
 private val priorityRank = mapOf(Priority.ALTA to 0, Priority.MEDIA to 1, Priority.BAJA to 2)
 
-private sealed class TareaRow {
-    data class SectionHeader(val label: String, val color: Color) : TareaRow()
-    data class TaskRow(val item: Item) : TareaRow()
+private sealed class ListaRow {
+    data class SectionHeader(val label: String, val color: Color) : ListaRow()
+    data class EntryRow(val item: Item) : ListaRow()
 }
 
 /** Fecha "efectiva" para agrupar/ordenar: la próxima ocurrencia si es recurrente. */
@@ -53,65 +61,86 @@ private fun effectiveDate(item: Item, today: Long): Long? =
     if (item.repeat == Repeat.NINGUNO) item.date
     else RecurrenceUtils.nextOccurrenceAtOrAfter(item, today) ?: item.date
 
-private fun buildRows(tareas: List<Item>, today: Long): List<TareaRow> {
-    val rows = mutableListOf<TareaRow>()
+/**
+ * Arma la lista plana de filas (encabezados + items) de una sola pasada. Se
+ * precalcula para poder emitirla con un único itemsIndexed: mezclar item() dentro
+ * de un forEach con una variable mutable fue lo que rompía el compositor.
+ */
+private fun buildRows(items: List<Item>, today: Long, hechas: Boolean): List<ListaRow> {
+    if (hechas) return items.map { ListaRow.EntryRow(it) }
+
+    val rows = mutableListOf<ListaRow>()
     var lastGroup = ""
-    for (tarea in tareas) {
-        val date = effectiveDate(tarea, today)
+    for (item in items) {
+        val date = effectiveDate(item, today)
         val group = when {
-            tarea.done -> "Completadas"
             date == null -> "Sin fecha"
             date < today -> "Atrasadas"
             date == today -> "Hoy"
             else -> "Próximas"
         }
         if (group != lastGroup) {
-            rows.add(TareaRow.SectionHeader(group, if (group == "Atrasadas") Personal else Muted))
+            rows.add(ListaRow.SectionHeader(group, if (group == "Atrasadas") Personal else Muted))
             lastGroup = group
         }
-        rows.add(TareaRow.TaskRow(tarea))
+        rows.add(ListaRow.EntryRow(item))
     }
     return rows
+}
+
+private fun emptyStateFor(type: ItemType, hechas: Boolean): Triple<String, String, String> = when {
+    hechas -> Triple("📋", "Aún nada completado", "Lo que marques como hecho aparece acá.")
+    type == ItemType.EVENTO -> Triple("📅", "Sin eventos", "Toca + para crear un evento.")
+    type == ItemType.TAREA -> Triple("🎯", "Sin tareas", "Toca + para crear una tarea.")
+    else -> Triple("⏰", "Sin recordatorios", "Toca + para crear un recordatorio.")
 }
 
 @Composable
 fun TareasScreen(
     items: List<Item>,
+    alertedTypes: Set<ItemType>,
     onItemClick: (Item) -> Unit,
     onToggleDone: (Item) -> Unit,
+    onTypeSeen: (ItemType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var filter by rememberSaveable { mutableStateOf(TareaFilter.PENDIENTES) }
+    var selectedType by rememberSaveable { mutableStateOf(ItemType.TAREA) }
+    var filter by rememberSaveable { mutableStateOf(DoneFilter.PENDIENTES) }
     val today = DateTimeUtils.today()
 
-    var tareas = items.filter { it.type == ItemType.TAREA }
-    tareas = when (filter) {
-        TareaFilter.PENDIENTES -> tareas.filter { !it.done }
-        TareaFilter.HOY -> tareas.filter { !it.done && effectiveDate(it, today) == today }
-        TareaFilter.HECHAS -> tareas.filter { it.done }
+    // Si el usuario está viendo la pestaña que tenía aviso, se da por revisada.
+    LaunchedEffect(selectedType, alertedTypes) {
+        if (selectedType in alertedTypes) onTypeSeen(selectedType)
     }
-    tareas = tareas.sortedWith(
-        compareBy(
-            { effectiveDate(it, today) ?: Long.MAX_VALUE },
-            { priorityRank[it.priority] ?: 3 }
-        )
-    )
 
-    val rows = buildRows(tareas, today)
+    val hechas = filter == DoneFilter.HECHAS
+    val filtered = items
+        .filter { it.type == selectedType && it.done == hechas }
+        .sortedWith(
+            compareBy(
+                { effectiveDate(it, today) ?: Long.MAX_VALUE },
+                { priorityRank[it.priority] ?: 3 }
+            )
+        )
+    val rows = buildRows(filtered, today, hechas)
 
     Column(modifier = modifier.fillMaxSize()) {
-        SegmentedControl(
-            selected = filter,
-            onSelect = { filter = it },
+        TypeTabs(
+            selected = selectedType,
+            alertedTypes = alertedTypes,
+            onSelect = { selectedType = it },
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
+        DoneFilterControl(
+            selected = filter,
+            onSelect = { filter = it },
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
         if (rows.isEmpty()) {
-            if (filter == TareaFilter.HECHAS) {
-                EmptyState("📋", "Aún nada completado", "Las tareas terminadas aparecen aquí.")
-            } else {
-                EmptyState("🎯", "Sin tareas", "Toca + para crear una tarea.")
-            }
+            val (emoji, title, subtitle) = emptyStateFor(selectedType, hechas)
+            EmptyState(emoji, title, subtitle, modifier = Modifier.fillMaxWidth())
         } else {
             LazyColumn(
                 modifier = Modifier
@@ -123,18 +152,19 @@ fun TareasScreen(
                     items = rows,
                     key = { index, row ->
                         when (row) {
-                            is TareaRow.SectionHeader -> "header-$index"
-                            is TareaRow.TaskRow -> row.item.id
+                            is ListaRow.SectionHeader -> "header-$index"
+                            is ListaRow.EntryRow -> row.item.id
                         }
                     }
                 ) { _, row ->
                     when (row) {
-                        is TareaRow.SectionHeader -> SectionLabel(row.label, color = row.color)
-                        is TareaRow.TaskRow -> ItemCard(
+                        is ListaRow.SectionHeader -> SectionLabel(row.label, color = row.color)
+                        is ListaRow.EntryRow -> ItemCard(
                             item = row.item,
                             onClick = { onItemClick(row.item) },
                             onToggleDone = { onToggleDone(row.item) },
-                            modifier = Modifier.padding(bottom = 9.dp)
+                            modifier = Modifier.padding(bottom = 9.dp),
+                            showCheckbox = true
                         )
                     }
                 }
@@ -144,9 +174,10 @@ fun TareasScreen(
 }
 
 @Composable
-private fun SegmentedControl(
-    selected: TareaFilter,
-    onSelect: (TareaFilter) -> Unit,
+private fun TypeTabs(
+    selected: ItemType,
+    alertedTypes: Set<ItemType>,
+    onSelect: (ItemType) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(12.dp)
@@ -157,22 +188,68 @@ private fun SegmentedControl(
             .border(1.dp, Hairline, shape)
             .padding(3.dp)
     ) {
-        TareaFilter.entries.forEach { f ->
-            val isSel = f == selected
+        typeTabs.forEach { (type, label) ->
+            val isSel = type == selected
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(9.dp))
                     .background(if (isSel) Accent else Color.Transparent)
-                    .clickable { onSelect(f) }
-                    .padding(vertical = 8.dp),
+                    .clickable { onSelect(type) }
+                    .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = f.label,
-                    fontSize = 13.sp,
+                    text = label,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
                     color = if (isSel) Color.White else Muted
+                )
+                // Punto de aviso: hay un recordatorio de este tipo que ya sonó
+                // y todavía no se revisó.
+                if (type in alertedTypes) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 1.dp, end = 4.dp)
+                            .size(8.dp)
+                            .background(PrioridadAlta, CircleShape)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DoneFilterControl(
+    selected: DoneFilter,
+    onSelect: (DoneFilter) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        DoneFilter.entries.forEach { f ->
+            val isSel = f == selected
+            val shape = RoundedCornerShape(20.dp)
+            Box(
+                modifier = Modifier
+                    .clip(shape)
+                    .background(if (isSel) Accent.copy(alpha = 0.12f) else Color.Transparent)
+                    .border(1.dp, if (isSel) Accent else Hairline, shape)
+                    .clickable { onSelect(f) }
+                    .padding(horizontal = 14.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    text = f.label,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isSel) Accent else Muted
                 )
             }
         }

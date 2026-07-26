@@ -55,7 +55,7 @@ fun HoyScreen(
         .sortedBy { it.date }
 
     val todayList = items
-        .filter { RecurrenceUtils.occursOn(it, today) && !(it.type == ItemType.TAREA && it.done) }
+        .filter { RecurrenceUtils.occursOn(it, today) && !it.done }
 
     val untimed = todayList.filter { it.time == null }
     val timed = todayList.filter { it.time != null }.sortedBy { it.time }

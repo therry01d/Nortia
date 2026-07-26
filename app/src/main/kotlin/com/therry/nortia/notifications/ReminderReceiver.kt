@@ -120,6 +120,9 @@ class ReminderReceiver : BroadcastReceiver() {
 
         NotificationManagerCompat.from(context).notify(itemId, notification)
 
+        // Deja la marca para que la pestaña del tipo correspondiente muestre el punto.
+        NotificationBadges.mark(context, item.type)
+
         if (item.repeat != Repeat.NINGUNO) {
             NotificationScheduler.scheduleNextRecurrence(context, item)
         }

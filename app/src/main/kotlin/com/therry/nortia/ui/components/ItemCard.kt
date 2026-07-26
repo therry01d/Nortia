@@ -40,10 +40,12 @@ fun ItemCard(
     item: Item,
     onClick: () -> Unit,
     onToggleDone: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** En la pantalla de listas cualquier tipo puede marcarse como hecho, no solo las tareas. */
+    showCheckbox: Boolean = item.type == ItemType.TAREA
 ) {
     val barColor = categoryColor(item.category)
-    val done = item.type == ItemType.TAREA && item.done
+    val done = item.done
 
     Card(
         onClick = onClick,
@@ -66,7 +68,7 @@ fun ItemCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                if (item.type == ItemType.TAREA) {
+                if (showCheckbox) {
                     TaskCheckbox(done = done, onToggle = onToggleDone)
                 } else {
                     TimeColumn(time = item.time)
@@ -84,7 +86,9 @@ fun ItemCard(
                         modifier = Modifier.padding(top = 5.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (item.type == ItemType.TAREA && !item.time.isNullOrBlank()) {
+                        // Con casilla no hay columna de hora a la izquierda, así que
+                        // la hora se muestra como chip para no perderla.
+                        if (showCheckbox && !item.time.isNullOrBlank()) {
                             val (hour, ampm) = DateTimeUtils.to12Hour(item.time)
                             SimpleChip("$hour $ampm")
                         }

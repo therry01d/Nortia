@@ -32,6 +32,7 @@ fun AgendaScreen(
 ) {
     val items by viewModel.items.collectAsState()
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
+    val alertedTypes by viewModel.alertedTypes.collectAsState()
 
     var currentTab by rememberSaveable { mutableStateOf(AppTab.HOY) }
     var calCursor by rememberSaveable { mutableStateOf(DateTimeUtils.today()) }
@@ -47,7 +48,7 @@ fun AgendaScreen(
         AppTab.HOY -> hoyGreeting() to hoyTitle()
         AppTab.SEMANA -> "Próximos 7 días" to "Semana"
         AppTab.CALENDARIO -> "Calendario" to "Agenda"
-        AppTab.TAREAS -> "Pendientes" to "Tareas"
+        AppTab.TAREAS -> "Tus listas" to "Tareas"
     }
 
     Scaffold(
@@ -105,8 +106,10 @@ fun AgendaScreen(
                 )
                 AppTab.TAREAS -> TareasScreen(
                     items = items,
+                    alertedTypes = alertedTypes,
                     onItemClick = { editingItem = it; showEditor = true },
                     onToggleDone = { viewModel.toggleDone(it) },
+                    onTypeSeen = { viewModel.markTypeSeen(it) },
                     modifier = Modifier.fillMaxSize()
                 )
             }

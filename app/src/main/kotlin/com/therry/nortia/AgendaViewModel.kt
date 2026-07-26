@@ -9,6 +9,8 @@ import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.data.AppDatabase
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemDao
+import com.therry.nortia.data.ItemType
+import com.therry.nortia.notifications.NotificationBadges
 import com.therry.nortia.notifications.NotificationScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,6 +30,15 @@ class AgendaViewModel(
 
     private val _notificationsEnabled = MutableStateFlow(false)
     val notificationsEnabled: StateFlow<Boolean> = _notificationsEnabled.asStateFlow()
+
+    /** Tipos con un recordatorio que sonó y todavía no se revisó (punto en la pestaña). */
+    val alertedTypes: StateFlow<Set<ItemType>> = NotificationBadges.observe(application)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    /** Quita el punto de aviso de un tipo, al abrir su pestaña. */
+    fun markTypeSeen(type: ItemType) {
+        NotificationBadges.clear(getApplication(), type)
+    }
 
     fun setNotificationsEnabled(enabled: Boolean) {
         _notificationsEnabled.value = enabled
