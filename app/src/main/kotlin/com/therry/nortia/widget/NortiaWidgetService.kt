@@ -14,7 +14,9 @@ import com.therry.nortia.util.DateTimeUtils
 import com.therry.nortia.util.RecurrenceUtils
 
 class NortiaWidgetService : RemoteViewsService() {
-    override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
+    // El tipo va calificado: Kotlin no trae al scope los tipos anidados de la
+    // superclase como sí hace Java, así que "RemoteViewsFactory" a secas no resuelve.
+    override fun onGetViewFactory(intent: Intent): RemoteViewsService.RemoteViewsFactory =
         NortiaWidgetFactory(applicationContext)
 }
 
@@ -22,6 +24,9 @@ private const val MAX_ITEMS = 25
 
 private class NortiaWidgetFactory(private val context: Context) : RemoteViewsService.RemoteViewsFactory {
 
+    // Escrito en onDataSetChanged y leído en getCount/getViewAt, que pueden ser
+    // hilos de binder distintos.
+    @Volatile
     private var items: List<Item> = emptyList()
 
     override fun onCreate() = Unit

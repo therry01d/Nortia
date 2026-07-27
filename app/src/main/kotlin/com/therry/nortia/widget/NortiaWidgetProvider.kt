@@ -7,6 +7,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.RemoteViews
 import com.therry.nortia.MainActivity
 import com.therry.nortia.R
@@ -42,23 +43,47 @@ class NortiaWidgetProvider : AppWidgetProvider() {
         views.setRemoteAdapter(R.id.widget_list, serviceIntent)
         views.setEmptyView(R.id.widget_list, R.id.widget_empty)
 
-        // Abrir la app: tanto desde el encabezado como desde cualquier fila.
+        // Toque directo (encabezado / estado vacío): puede ser inmutable.
         val openApp = PendingIntent.getActivity(
             context,
-            0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
+            REQUEST_OPEN_APP,
+            mainActivityIntent(context),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         views.setOnClickPendingIntent(R.id.widget_header, openApp)
         views.setOnClickPendingIntent(R.id.widget_empty, openApp)
-        views.setPendingIntentTemplate(R.id.widget_list, openApp)
+
+        // La plantilla de la lista DEBE ser mutable: el sistema le fusiona el
+        // fill-in intent de cada fila. Con FLAG_IMMUTABLE el toque en la fila no
+        // hace nada. Va con requestCode propio para no colisionar con el de arriba
+        // (mismo Intent + mismo requestCode = el mismo PendingIntent).
+        val rowTemplate = PendingIntent.getActivity(
+            context,
+            REQUEST_ROW_TEMPLATE,
+            mainActivityIntent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or mutableFlag()
+        )
+        views.setPendingIntentTemplate(R.id.widget_list, rowTemplate)
 
         return views
     }
 
+    private fun mainActivityIntent(context: Context) =
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+    /**
+     * FLAG_MUTABLE existe desde API 31; antes de esa versión los PendingIntent ya
+     * eran mutables por defecto, así que no hace falta ninguna bandera.
+     */
+    private fun mutableFlag(): Int =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+
     companion object {
+
+        private const val REQUEST_OPEN_APP = 0
+        private const val REQUEST_ROW_TEMPLATE = 1
 
         /**
          * Refresca todos los widgets colocados. Se llama al crear/editar/borrar un
