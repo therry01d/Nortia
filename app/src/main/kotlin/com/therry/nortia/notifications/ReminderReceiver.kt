@@ -15,6 +15,7 @@ import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Repeat
 import com.therry.nortia.util.DateTimeUtils
+import com.therry.nortia.widget.NortiaWidgetProvider
 
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -122,6 +123,7 @@ class ReminderReceiver : BroadcastReceiver() {
 
         // Deja la marca para que la pestaña del tipo correspondiente muestre el punto.
         NotificationBadges.mark(context, item.type)
+        NortiaWidgetProvider.refresh(context)
 
         if (item.repeat != Repeat.NINGUNO) {
             NotificationScheduler.scheduleNextRecurrence(context, item)

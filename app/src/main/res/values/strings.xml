@@ -11,4 +11,8 @@
 
     <string name="permission_exact_alarm_rationale">Nortia necesita permiso para programar alarmas exactas y avisarte a la hora justa de tus eventos.</string>
     <string name="permission_notifications_rationale">Nortia necesita permiso para mostrar notificaciones de tus recordatorios.</string>
+
+    <string name="widget_title">Hoy</string>
+    <string name="widget_empty">Nada pendiente para hoy</string>
+    <string name="widget_all_day">Todo el día</string>
 </resources>

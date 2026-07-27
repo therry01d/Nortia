@@ -44,6 +44,23 @@
             android:name=".notifications.ReminderReceiver"
             android:exported="false" />
 
+        <!-- exported=true: el lanzador (otra app) es quien envía APPWIDGET_UPDATE. -->
+        <receiver
+            android:name=".widget.NortiaWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nortia_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".widget.NortiaWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
         <!-- exported=true: BOOT_COMPLETED y MY_PACKAGE_REPLACED los emite el sistema
              (otro UID). Con exported=false el receiver NO los recibe y los
              recordatorios no se reprograman tras reiniciar/actualizar. Es seguro:

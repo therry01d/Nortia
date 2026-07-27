@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.therry.nortia.data.AppDatabase
+import com.therry.nortia.widget.NortiaWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val dao = AppDatabase.getInstance(appContext).itemDao()
                 dao.getRemindable().forEach { item -> NotificationScheduler.schedule(appContext, item) }
+                NortiaWidgetProvider.refresh(appContext)
             } catch (e: Throwable) {
                 Log.e("Nortia", "Error reprogramando recordatorios", e)
             } finally {

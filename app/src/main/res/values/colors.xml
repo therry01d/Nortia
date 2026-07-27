@@ -1,3 +1,10 @@
 <resources>
     <color name="ic_launcher_background">#6650a4</color>
+
+    <!-- Widget: mismos tokens que el tema Compose (ui/theme/Color.kt) -->
+    <color name="widget_background">#FFFFFFFF</color>
+    <color name="widget_ink">#FF171A21</color>
+    <color name="widget_muted">#FF5C6473</color>
+    <color name="widget_accent">#FF3B5BDB</color>
+    <color name="widget_hairline">#FFE6EAF2</color>
 </resources>

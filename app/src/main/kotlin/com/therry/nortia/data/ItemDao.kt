@@ -24,4 +24,12 @@ interface ItemDao {
 
     @Query("SELECT * FROM items WHERE remind = 1 AND done = 0")
     suspend fun getRemindable(): List<Item>
+
+    /**
+     * Versión bloqueante para el widget: RemoteViewsFactory corre en un hilo de
+     * binder (nunca en el principal) y no admite corrutinas, así que necesita
+     * una consulta síncrona.
+     */
+    @Query("SELECT * FROM items WHERE done = 0")
+    fun getPendingBlocking(): List<Item>
 }

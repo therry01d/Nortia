@@ -12,6 +12,7 @@ import com.therry.nortia.data.ItemDao
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.notifications.NotificationBadges
 import com.therry.nortia.notifications.NotificationScheduler
+import com.therry.nortia.widget.NortiaWidgetProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +50,7 @@ class AgendaViewModel(
         viewModelScope.launch {
             val newId = dao.insert(item)
             NotificationScheduler.schedule(getApplication(), item.copy(id = newId.toInt()))
+            refreshWidget()
         }
     }
 
@@ -58,6 +60,7 @@ class AgendaViewModel(
             dismissActiveNotification(item)
             dao.update(item)
             NotificationScheduler.schedule(getApplication(), item)
+            refreshWidget()
         }
     }
 
@@ -66,6 +69,7 @@ class AgendaViewModel(
             dao.delete(item)
             NotificationScheduler.cancel(getApplication(), item)
             dismissActiveNotification(item)
+            refreshWidget()
         }
     }
 
@@ -79,7 +83,13 @@ class AgendaViewModel(
             } else {
                 NotificationScheduler.schedule(getApplication(), updated)
             }
+            refreshWidget()
         }
+    }
+
+    /** Mantiene el widget de pantalla de inicio en sincronía con la base. */
+    private fun refreshWidget() {
+        NortiaWidgetProvider.refresh(getApplication())
     }
 
     /**
