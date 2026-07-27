@@ -40,5 +40,17 @@
             android:paddingTop="1dp"
             android:textColor="@color/widget_muted"
             android:textSize="12sp" />
+
+        <!-- Descripción/nota del item. Se oculta desde el código si está vacía. -->
+        <TextView
+            android:id="@+id/widget_item_note"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:paddingTop="2dp"
+            android:textColor="@color/widget_ink"
+            android:textSize="13sp"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>

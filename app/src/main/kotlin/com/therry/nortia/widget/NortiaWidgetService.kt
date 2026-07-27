@@ -3,6 +3,7 @@ package com.therry.nortia.widget
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.therry.nortia.R
@@ -63,6 +64,14 @@ private class NortiaWidgetFactory(private val context: Context) : RemoteViewsSer
         views.setTextViewText(R.id.widget_item_title, "${typeIcon(item.type)} ${item.title}")
         views.setTextViewText(R.id.widget_item_meta, meta(item))
         views.setInt(R.id.widget_item_bar, "setBackgroundColor", categoryColor(item.category))
+
+        // La descripción solo ocupa espacio si el item tiene nota.
+        if (item.note.isBlank()) {
+            views.setViewVisibility(R.id.widget_item_note, View.GONE)
+        } else {
+            views.setTextViewText(R.id.widget_item_note, item.note)
+            views.setViewVisibility(R.id.widget_item_note, View.VISIBLE)
+        }
 
         // Completa la plantilla de PendingIntent del ListView: toda la fila abre la app.
         views.setOnClickFillInIntent(R.id.widget_item_root, Intent())
