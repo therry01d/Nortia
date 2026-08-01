@@ -29,9 +29,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Repeat
 import com.therry.nortia.notifications.NotificationHelper
@@ -89,10 +92,32 @@ private fun channelHasSound(context: Context): Boolean {
         channel.importance >= NotificationManager.IMPORTANCE_DEFAULT
 }
 
+/** ¿El sistema permite mostrar notificaciones de la app? (interruptor global) */
+private fun notificationsAllowed(context: Context): Boolean =
+    NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+/** ¿El canal quedó bloqueado por el usuario? Un canal en IMPORTANCE_NONE no muestra nada. */
+private fun channelNotBlocked(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return true
+    val notificationManager = context.getSystemService(NotificationManager::class.java)
+    val channel = notificationManager.getNotificationChannel(NotificationHelper.CHANNEL_ID)
+    return channel == null || channel.importance != NotificationManager.IMPORTANCE_NONE
+}
+
 private fun buildChecks(context: Context): List<DiagCheck> = listOf(
     DiagCheck(
         label = "Permiso de notificaciones",
         ok = hasNotificationPermission(context),
+        fixIntent = appSettingsIntent(context)
+    ),
+    DiagCheck(
+        label = "Notificaciones activadas",
+        ok = notificationsAllowed(context),
+        fixIntent = appSettingsIntent(context)
+    ),
+    DiagCheck(
+        label = "Canal sin bloquear",
+        ok = channelNotBlocked(context),
         fixIntent = appSettingsIntent(context)
     ),
     DiagCheck(
@@ -129,6 +154,17 @@ private fun buildChecks(context: Context): List<DiagCheck> = listOf(
     )
 )
 
+/** Hora "h:mm am/pm" de un instante, para mostrar el próximo aviso. */
+private fun hourOf(millis: Long): String {
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    val hhmm = "%02d:%02d".format(
+        calendar.get(java.util.Calendar.HOUR_OF_DAY),
+        calendar.get(java.util.Calendar.MINUTE)
+    )
+    val (hora, ampm) = DateTimeUtils.to12Hour(hhmm)
+    return "$hora $ampm"
+}
+
 private fun sendTestNotification(context: Context) {
     val intent = Intent(context, ReminderReceiver::class.java).apply {
         putExtra(NotificationScheduler.EXTRA_ITEM_ID, 999999)
@@ -152,12 +188,28 @@ private fun sendTestNotification(context: Context) {
  * problema está en cómo se arma la notificación o en la programación de la alarma.
  */
 @Composable
-fun NotificationDiagnosticsDialog(onDismiss: () -> Unit) {
+fun NotificationDiagnosticsDialog(
+    items: List<Item>,
+    onDismiss: () -> Unit
+) {
     val context = LocalContext.current
     var refreshKey by remember { mutableIntStateOf(0) }
 
     val checks = remember(refreshKey) { buildChecks(context) }
     val allOk = checks.all { !it.applicable || it.ok }
+
+    // Estado real de las alarmas: cuántas deberían estar programadas, cuántas
+    // el sistema tiene efectivamente registradas, y cuándo es la próxima.
+    val alarmInfo = remember(refreshKey, items) {
+        val pendientes = items.filter { it.remind && !it.done }
+        val registradas = pendientes.count { NotificationScheduler.isScheduled(context, it) }
+        val proxima = pendientes
+            .mapNotNull { NotificationScheduler.triggerAtMillis(it) }
+            .filter { it > System.currentTimeMillis() }
+            .minOrNull()
+        Triple(pendientes.size, registradas, proxima)
+    }
+    val (conRecordatorio, registradas, proximaMillis) = alarmInfo
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -199,10 +251,26 @@ fun NotificationDiagnosticsDialog(onDismiss: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
+                    text = "Alarmas: $registradas de $conRecordatorio registradas en el sistema",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (registradas < conRecordatorio) PrioridadAlta else Muted
+                )
+                Text(
+                    text = "Próximo aviso: " + (
+                        proximaMillis?.let { "${DateTimeUtils.formatShortDate(it)} ${hourOf(it)}" }
+                            ?: "ninguno programado"
+                        ),
+                    fontSize = 12.sp,
+                    color = Muted
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
                     text = "Si tocás \"Probar ahora\" y no pasa nada (ni sonido, ni vibración, " +
-                        "ni aviso en pantalla), el problema está en la app. Si la prueba funciona " +
-                        "pero los recordatorios que programás no suenan a su hora, revisá que todo " +
-                        "arriba tenga ✅.",
+                        "ni aviso en pantalla), el problema está al mostrar la notificación. Si la " +
+                        "prueba sí funciona pero los recordatorios no suenan a su hora, el problema " +
+                        "está en que el sistema no despierta la app: revisá el ahorro de batería y, " +
+                        "en Xiaomi/Redmi, activá también \"Inicio automático\" para Nortia.",
                     fontSize = 12.sp,
                     color = Muted
                 )

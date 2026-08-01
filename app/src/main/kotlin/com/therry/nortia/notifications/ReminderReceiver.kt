@@ -119,7 +119,14 @@ class ReminderReceiver : BroadcastReceiver() {
             .addAction(0, context.getString(R.string.action_snooze), snoozePendingIntent)
             .build()
 
-        NotificationManagerCompat.from(context).notify(itemId, notification)
+        val manager = NotificationManagerCompat.from(context)
+        if (!manager.areNotificationsEnabled()) {
+            // La alarma sonó pero el sistema tiene las notificaciones desactivadas
+            // para la app: notify() sería un no-op silencioso. Queda registrado
+            // para que el diagnóstico de la campana lo pueda explicar.
+            Log.w("Nortia", "Alarma disparada pero las notificaciones están desactivadas")
+        }
+        manager.notify(itemId, notification)
 
         // Deja la marca para que la pestaña del tipo correspondiente muestre el punto.
         NotificationBadges.mark(context, item.type)

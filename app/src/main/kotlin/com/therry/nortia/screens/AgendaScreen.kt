@@ -136,6 +136,9 @@ fun AgendaScreen(
     }
 
     if (showDiagnostics) {
-        NotificationDiagnosticsDialog(onDismiss = { showDiagnostics = false })
+        NotificationDiagnosticsDialog(
+            items = items,
+            onDismiss = { showDiagnostics = false }
+        )
     }
 }

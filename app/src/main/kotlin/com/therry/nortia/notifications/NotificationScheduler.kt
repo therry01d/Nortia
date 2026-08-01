@@ -145,6 +145,21 @@ object NotificationScheduler {
         alarmManager.cancel(buildPendingIntent(context, item))
     }
 
+    /**
+     * ¿El sistema tiene realmente registrada la alarma de este item? Con
+     * FLAG_NO_CREATE el PendingIntent solo se devuelve si ya existe, así que
+     * sirve para distinguir "nunca se programó" de "se programó pero no suena".
+     */
+    fun isScheduled(context: Context, item: Item): Boolean {
+        val intent = Intent(context, ReminderReceiver::class.java)
+        return PendingIntent.getBroadcast(
+            context,
+            item.id,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        ) != null
+    }
+
     private fun buildPendingIntent(context: Context, item: Item): PendingIntent {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             putExtra(EXTRA_ITEM_ID, item.id)
