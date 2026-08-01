@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Intent
 import android.os.Process
 import com.therry.nortia.notifications.NotificationHelper
+import com.therry.nortia.notifications.NotificationScheduler
 import kotlin.system.exitProcess
 
 /**
@@ -22,6 +23,11 @@ class NortiaApplication : Application() {
         // postear en un canal inexistente hace que Android descarte la notificación
         // en silencio. Application.onCreate corre antes que cualquier receiver.
         NotificationHelper.createChannel(this)
+
+        // Guardián de recordatorios: se reafirma en cada arranque del proceso.
+        // setInexactRepeating es idempotente (reemplaza la anterior con el mismo
+        // PendingIntent), así que llamarlo de más no acumula alarmas.
+        runCatching { NotificationScheduler.ensureKeeperScheduled(this) }
 
         Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
             try {

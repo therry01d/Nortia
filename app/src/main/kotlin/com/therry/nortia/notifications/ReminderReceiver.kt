@@ -10,12 +10,16 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.therry.nortia.R
+import com.therry.nortia.data.AppDatabase
 import com.therry.nortia.data.Category
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Repeat
 import com.therry.nortia.util.DateTimeUtils
 import com.therry.nortia.widget.NortiaWidgetProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -30,6 +34,12 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 
     private fun handleReceive(context: Context, intent: Intent) {
+        // El guardián no viene asociado a ningún item: reprograma todo desde la base.
+        if (intent.action == ACTION_RESCHEDULE_ALL) {
+            rescheduleAllFromDatabase(context)
+            return
+        }
+
         val itemId = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_ID, -1)
         if (itemId == -1) return
 
@@ -47,6 +57,28 @@ class ReminderReceiver : BroadcastReceiver() {
                 )
             }
             else -> showReminder(context, intent, itemId)
+        }
+    }
+
+    /**
+     * Reprograma todos los recordatorios pendientes leyendo la base. Corre en IO
+     * con goAsync() porque onReceive no puede bloquear ni tocar la base en su hilo.
+     */
+    private fun rescheduleAllFromDatabase(context: Context) {
+        val appContext = context.applicationContext
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                AppDatabase.getInstance(appContext).itemDao().getRemindable().forEach { item ->
+                    NotificationScheduler.schedule(appContext, item)
+                }
+                // Se reafirma por si el guardián se hubiera perdido alguna vuelta.
+                NotificationScheduler.ensureKeeperScheduled(appContext)
+            } catch (e: Throwable) {
+                Log.e("Nortia", "Error reprogramando recordatorios desde el guardián", e)
+            } finally {
+                pendingResult.finish()
+            }
         }
     }
 
@@ -190,5 +222,6 @@ class ReminderReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_DISMISS = "com.therry.nortia.ACTION_DISMISS"
         const val ACTION_SNOOZE = "com.therry.nortia.ACTION_SNOOZE"
+        const val ACTION_RESCHEDULE_ALL = "com.therry.nortia.ACTION_RESCHEDULE_ALL"
     }
 }

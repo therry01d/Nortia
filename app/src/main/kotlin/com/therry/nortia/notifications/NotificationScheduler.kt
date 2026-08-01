@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.util.Log
+import com.therry.nortia.MainActivity
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.Repeat
 import com.therry.nortia.util.DateTimeUtils
@@ -26,6 +28,15 @@ object NotificationScheduler {
 
     /** Margen mínimo para un aviso "ya mismo", para no programar en el instante exacto. */
     private const val IMMEDIATE_DELAY_MILLIS = 3_000L
+
+    /** requestCode del guardián; muy negativo para no chocar nunca con un id de item. */
+    private const val KEEPER_REQUEST_CODE = -424242
+
+    /** Cada cuánto el guardián reprograma todo. */
+    private const val KEEPER_INTERVAL_MILLIS = 6 * 60 * 60 * 1000L
+
+    /** Desplazamiento del requestCode del ícono de alarma, para no chocar con el widget. */
+    private const val SHOW_INTENT_REQUEST_OFFSET = 1_000_000
 
     /**
      * Momento exacto del disparo: fecha+hora de la próxima ocurrencia menos el
@@ -94,15 +105,27 @@ object NotificationScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pendingIntent = buildPendingIntent(context, item)
 
-        // En Android 12+ las alarmas exactas requieren un permiso especial que
-        // suele venir denegado. Si no lo tenemos, NO abandonamos: caemos a una
-        // alarma inexacta (setAndAllowWhileIdle) que igual se dispara aunque el
-        // dispositivo esté en Doze, con un margen de pocos minutos. Antes esta
-        // función hacía return y el recordatorio no se programaba en absoluto,
-        // por eso las notificaciones no aparecían cuando debían.
+        // setAlarmClock es la API pensada para avisos que el usuario espera a una
+        // hora concreta. A diferencia de setExactAndAllowWhileIdle, está EXENTA de
+        // Doze y —lo importante acá— de los App Standby Buckets: Android degrada la
+        // app a los buckets FREQUENT/RARE tras 24-48 h sin abrirla y ahí difiere las
+        // otras alarmas hasta 24 h, que es exactamente por qué los recordatorios
+        // andaban al principio y después dejaban de sonar. Tampoco necesita el
+        // permiso de alarmas exactas. A cambio muestra el ícono de alarma en la
+        // barra de estado, algo razonable para una app de recordatorios.
+        try {
+            alarmManager.setAlarmClock(
+                AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent(context, item)),
+                pendingIntent
+            )
+            return
+        } catch (e: Exception) {
+            Log.w("Nortia", "setAlarmClock falló, se usa el camino alternativo", e)
+        }
+
+        // Respaldo por si algún fabricante restringe setAlarmClock.
         val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             alarmManager.canScheduleExactAlarms()
-
         try {
             if (canExact) {
                 alarmManager.setExactAndAllowWhileIdle(
@@ -118,8 +141,6 @@ object NotificationScheduler {
                 )
             }
         } catch (_: SecurityException) {
-            // El permiso de alarmas exactas se revocó entre el chequeo y la
-            // llamada: reintentamos con la variante inexacta, que no lo necesita.
             try {
                 alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
@@ -127,9 +148,51 @@ object NotificationScheduler {
                     pendingIntent
                 )
             } catch (_: Exception) {
-                // Sin nada más que hacer; se reprogramará en el próximo arranque.
+                // Sin nada más que hacer; lo recupera el guardián o el próximo arranque.
             }
         }
+    }
+
+    /**
+     * Lo que se abre si el usuario toca el ícono de alarma del sistema. El
+     * requestCode va desplazado porque el widget también crea PendingIntents hacia
+     * MainActivity con códigos bajos y, al coincidir el Intent, se pisarían.
+     */
+    private fun showIntent(context: Context, item: Item): PendingIntent =
+        PendingIntent.getActivity(
+            context,
+            SHOW_INTENT_REQUEST_OFFSET + item.id,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+    /**
+     * Guardián: alarma repetitiva que cada pocas horas vuelve a programar TODOS los
+     * recordatorios desde la base. Es la red de seguridad ante el otro fallo de la
+     * arquitectura: la cadena de recurrencia se autoperpetúa (cada disparo programa
+     * el siguiente), así que un solo disparo perdido la mataba para siempre hasta
+     * que el usuario abriera la app. Al ser repetitiva, se vuelve a disparar sola
+     * aunque se pierda una vuelta.
+     */
+    fun ensureKeeperScheduled(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ReminderReceiver.ACTION_RESCHEDULE_ALL
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            KEEPER_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        alarmManager.setInexactRepeating(
+            AlarmManager.RTC_WAKEUP,
+            System.currentTimeMillis() + KEEPER_INTERVAL_MILLIS,
+            KEEPER_INTERVAL_MILLIS,
+            pendingIntent
+        )
     }
 
     /** Programa la ocurrencia siguiente de un item recurrente, después de que ya sonó la de hoy. */

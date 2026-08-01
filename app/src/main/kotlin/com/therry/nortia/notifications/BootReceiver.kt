@@ -28,6 +28,8 @@ class BootReceiver : BroadcastReceiver() {
             try {
                 val dao = AppDatabase.getInstance(appContext).itemDao()
                 dao.getRemindable().forEach { item -> NotificationScheduler.schedule(appContext, item) }
+                // El reinicio también borra la alarma repetitiva del guardián.
+                NotificationScheduler.ensureKeeperScheduled(appContext)
                 NortiaWidgetProvider.refresh(appContext)
             } catch (e: Throwable) {
                 Log.e("Nortia", "Error reprogramando recordatorios", e)
