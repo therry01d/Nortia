@@ -87,6 +87,12 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <!-- Cada desbloqueo del teléfono: oportunidad barata y frecuente de
+                     reparar la programación, sin gastar cuota de alarmas. -->
+                <action android:name="android.intent.action.USER_PRESENT" />
+                <!-- El usuario acaba de conceder (o revocar) el permiso de alarmas
+                     exactas: hay que reprogramar para pasar al camino exacto. -->
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>

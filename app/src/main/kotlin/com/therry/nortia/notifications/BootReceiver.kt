@@ -11,16 +11,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * El sistema borra las alarmas exactas de AlarmManager al reiniciar el dispositivo
- * (y, en algunos casos, al actualizar la app), así que hay que volver a programarlas
- * para todos los items pendientes con recordatorio.
+ * Reprograma los recordatorios ante los eventos del sistema que los invalidan o
+ * que dan una oportunidad barata de repararlos.
+ *
+ * El enfoque está tomado de Tasks.org, la app de recordatorios open source más
+ * madura del ecosistema: además del reinicio, escucha el desbloqueo del teléfono
+ * y el cambio del permiso de alarmas exactas.
  */
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
-            intent.action != Intent.ACTION_MY_PACKAGE_REPLACED
-        ) return
+        val action = intent.action ?: return
+        if (action !in HANDLED_ACTIONS) return
+
+        // USER_PRESENT llega en cada desbloqueo: sin freno se releería la base
+        // decenas de veces por día sin motivo. Los eventos importantes (reinicio,
+        // actualización, cambio de permiso) se atienden siempre.
+        val throttled = action == Intent.ACTION_USER_PRESENT
+        if (throttled && !shouldRunThrottled(context)) return
 
         val appContext = context.applicationContext
         val pendingResult = goAsync()
@@ -32,10 +40,39 @@ class BootReceiver : BroadcastReceiver() {
                 NotificationScheduler.ensureKeeperScheduled(appContext)
                 NortiaWidgetProvider.refresh(appContext)
             } catch (e: Throwable) {
-                Log.e("Nortia", "Error reprogramando recordatorios", e)
+                Log.e("Nortia", "Error reprogramando recordatorios ($action)", e)
             } finally {
                 pendingResult.finish()
             }
         }
+    }
+
+    /** Deja pasar como mucho una reprogramación por desbloqueo cada [THROTTLE_MILLIS]. */
+    private fun shouldRunThrottled(context: Context): Boolean {
+        val prefs = context.applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val last = prefs.getLong(KEY_LAST_RUN, 0L)
+        val now = System.currentTimeMillis()
+        if (now - last < THROTTLE_MILLIS) return false
+        prefs.edit().putLong(KEY_LAST_RUN, now).apply()
+        return true
+    }
+
+    private companion object {
+        const val PREFS_NAME = "nortia_reschedule"
+        const val KEY_LAST_RUN = "last_run"
+        const val THROTTLE_MILLIS = 30 * 60 * 1000L
+
+        /** ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED es API 31; el literal
+         *  evita tener que compilar contra la constante en dispositivos anteriores. */
+        const val ACTION_EXACT_ALARM_PERMISSION_CHANGED =
+            "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
+
+        val HANDLED_ACTIONS = setOf(
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            Intent.ACTION_USER_PRESENT,
+            ACTION_EXACT_ALARM_PERMISSION_CHANGED
+        )
     }
 }
