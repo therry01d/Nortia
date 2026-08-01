@@ -2,7 +2,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!--
+        setAlarmClock(), setExact() y setExactAndAllowWhileIdle() exigen permiso de
+        alarma exacta desde Android 12; sin él lanzan SecurityException.
+
+        En Android 13+ se declara USE_EXACT_ALARM, que es un permiso "normal":
+        se concede solo al instalar, sin que el usuario tenga que entrar a
+        "Alarmas y recordatorios". Está reservado a apps de calendario/despertador,
+        que es justamente lo que hace Nortia. En Android 14 SCHEDULE_EXACT_ALARM
+        viene DENEGADO por defecto, así que sin esto los recordatorios caían al
+        camino inexacto, sujeto a las cuotas de App Standby.
+
+        Para Android 12 (API 31-32) sigue haciendo falta SCHEDULE_EXACT_ALARM.
+    -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />

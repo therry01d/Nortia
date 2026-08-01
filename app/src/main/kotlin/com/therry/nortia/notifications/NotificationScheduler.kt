@@ -105,14 +105,16 @@ object NotificationScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pendingIntent = buildPendingIntent(context, item)
 
-        // setAlarmClock es la API pensada para avisos que el usuario espera a una
-        // hora concreta. A diferencia de setExactAndAllowWhileIdle, está EXENTA de
-        // Doze y —lo importante acá— de los App Standby Buckets: Android degrada la
-        // app a los buckets FREQUENT/RARE tras 24-48 h sin abrirla y ahí difiere las
-        // otras alarmas hasta 24 h, que es exactamente por qué los recordatorios
-        // andaban al principio y después dejaban de sonar. Tampoco necesita el
-        // permiso de alarmas exactas. A cambio muestra el ícono de alarma en la
-        // barra de estado, algo razonable para una app de recordatorios.
+        // setAlarmClock es la API para avisos que el usuario espera a una hora
+        // concreta: el sistema NUNCA ajusta su entrega y sale de los modos de bajo
+        // consumo para entregarla, así que no la afectan ni Doze ni las cuotas de
+        // App Standby (en el bucket RARE son 1 alarma/hora y en RESTRICTED 1 al día,
+        // que es a donde cae la app tras días sin abrirse).
+        //
+        // OJO: desde Android 12 SÍ requiere permiso de alarma exacta y lanza
+        // SecurityException sin él. Por eso el manifiesto declara USE_EXACT_ALARM,
+        // que se concede solo al instalar. El catch de abajo cubre el caso en que
+        // aun así no esté disponible.
         try {
             alarmManager.setAlarmClock(
                 AlarmManager.AlarmClockInfo(triggerAtMillis, showIntent(context, item)),
