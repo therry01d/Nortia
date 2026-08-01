@@ -99,7 +99,8 @@ class ReminderFullScreenActivity : ComponentActivity() {
             note = intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_NOTE).orEmpty(),
             remind = true,
             remindBeforeMinutes = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, 10),
-            repeat = repeat
+            repeat = repeat,
+            repeatDays = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REPEAT_DAYS, 0)
         )
     }
 

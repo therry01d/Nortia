@@ -191,7 +191,8 @@ class ReminderReceiver : BroadcastReceiver() {
             remindBeforeMinutes = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, 10),
             repeat = Repeat.valueOf(
                 intent.getStringExtra(NotificationScheduler.EXTRA_ITEM_REPEAT) ?: Repeat.NINGUNO.name
-            )
+            ),
+            repeatDays = intent.getIntExtra(NotificationScheduler.EXTRA_ITEM_REPEAT_DAYS, 0)
         )
     }
 
@@ -204,6 +205,7 @@ class ReminderReceiver : BroadcastReceiver() {
         item.date?.let { putExtra(NotificationScheduler.EXTRA_ITEM_DATE, it) }
         putExtra(NotificationScheduler.EXTRA_ITEM_REPEAT, item.repeat.name)
         putExtra(NotificationScheduler.EXTRA_ITEM_REMIND_BEFORE, item.remindBeforeMinutes)
+        putExtra(NotificationScheduler.EXTRA_ITEM_REPEAT_DAYS, item.repeatDays)
     }
 
     private fun actionPendingIntent(context: Context, item: Item, action: String): PendingIntent {

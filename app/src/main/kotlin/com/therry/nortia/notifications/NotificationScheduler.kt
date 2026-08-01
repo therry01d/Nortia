@@ -22,6 +22,7 @@ object NotificationScheduler {
     const val EXTRA_ITEM_DATE = "extra_item_date"
     const val EXTRA_ITEM_REPEAT = "extra_item_repeat"
     const val EXTRA_ITEM_REMIND_BEFORE = "extra_item_remind_before"
+    const val EXTRA_ITEM_REPEAT_DAYS = "extra_item_repeat_days"
 
     /** Cuánto se pospone un recordatorio al tocar "Posponer". Fuente única de verdad. */
     const val SNOOZE_MILLIS = 10 * 60 * 1000L
@@ -235,6 +236,7 @@ object NotificationScheduler {
             item.date?.let { putExtra(EXTRA_ITEM_DATE, it) }
             putExtra(EXTRA_ITEM_REPEAT, item.repeat.name)
             putExtra(EXTRA_ITEM_REMIND_BEFORE, item.remindBeforeMinutes)
+            putExtra(EXTRA_ITEM_REPEAT_DAYS, item.repeatDays)
         }
         return PendingIntent.getBroadcast(
             context,

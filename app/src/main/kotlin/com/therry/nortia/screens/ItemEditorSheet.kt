@@ -5,12 +5,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -21,6 +23,7 @@ import com.therry.nortia.data.Item
 import com.therry.nortia.data.ItemType
 import com.therry.nortia.data.Priority
 import com.therry.nortia.data.Repeat
+import com.therry.nortia.data.WeekDays
 import com.therry.nortia.ui.theme.Accent
 import com.therry.nortia.ui.theme.AccentSoft
 import com.therry.nortia.ui.theme.Hairline
@@ -42,6 +45,7 @@ private val remindOptions = listOf(
 private val repeatOptions = listOf(
     Repeat.NINGUNO to "No se repite",
     Repeat.DIARIO to "Cada día",
+    Repeat.DIAS_SEMANA to "Días específicos",
     Repeat.SEMANAL to "Cada semana",
     Repeat.MENSUAL to "Cada mes",
     Repeat.ANUAL to "Cada año"
@@ -68,6 +72,7 @@ fun ItemEditorSheet(
     var remind by remember { mutableStateOf(editing?.remind ?: true) }
     var remindBefore by remember { mutableStateOf(editing?.remindBeforeMinutes ?: 10) }
     var repeat by remember { mutableStateOf(editing?.repeat ?: Repeat.NINGUNO) }
+    var repeatDays by remember { mutableStateOf(editing?.repeatDays ?: WeekDays.NONE) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showDatePicker by remember { mutableStateOf(false) }
@@ -153,6 +158,12 @@ fun ItemEditorSheet(
                 )
                 FieldLabel("Repite")
                 RepeatDropdown(selected = repeat, onSelect = { repeat = it })
+                if (repeat == Repeat.DIAS_SEMANA) {
+                    WeekDayPicker(
+                        selectedMask = repeatDays,
+                        onToggle = { repeatDays = WeekDays.toggle(repeatDays, it) }
+                    )
+                }
             }
 
             FieldLabel("Categoría")
@@ -211,6 +222,10 @@ fun ItemEditorSheet(
                             errorMessage = "El recordatorio necesita fecha y hora"
                             return@Button
                         }
+                        if (!noDate && repeat == Repeat.DIAS_SEMANA && repeatDays == WeekDays.NONE) {
+                            errorMessage = "Elegí al menos un día de la semana"
+                            return@Button
+                        }
                         onSave(
                             Item(
                                 id = editing?.id ?: 0,
@@ -224,7 +239,12 @@ fun ItemEditorSheet(
                                 done = editing?.done ?: false,
                                 remind = remind && !noDate,
                                 remindBeforeMinutes = remindBefore,
-                                repeat = if (noDate) Repeat.NINGUNO else repeat
+                                repeat = if (noDate) Repeat.NINGUNO else repeat,
+                                repeatDays = if (!noDate && repeat == Repeat.DIAS_SEMANA) {
+                                    repeatDays
+                                } else {
+                                    WeekDays.NONE
+                                }
                             )
                         )
                     },
@@ -277,6 +297,41 @@ fun ItemEditorSheet(
             },
             text = { TimePicker(state = timeState) }
         )
+    }
+}
+
+/**
+ * Fila de 7 círculos (L M X J V S D) para elegir en qué días se repite.
+ * El orden coincide con la máscara de bits de [WeekDays]: bit 0 = lunes.
+ */
+@Composable
+private fun WeekDayPicker(selectedMask: Int, onToggle: (Int) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        DateTimeUtils.DIAS_CORTOS.forEachIndexed { bitIndex, label ->
+            val isSel = WeekDays.isSelected(selectedMask, bitIndex)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .background(if (isSel) Accent else Color(0xFFFAFBFD))
+                    .border(1.dp, if (isSel) Accent else Hairline, CircleShape)
+                    .clickable { onToggle(bitIndex) },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isSel) Color.White else Muted
+                )
+            }
+        }
     }
 }
 

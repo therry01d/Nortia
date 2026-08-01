@@ -2,6 +2,7 @@ package com.therry.nortia.util
 
 import com.therry.nortia.data.Item
 import com.therry.nortia.data.Repeat
+import com.therry.nortia.data.WeekDays
 import java.util.Calendar
 import kotlin.math.roundToLong
 
@@ -17,12 +18,35 @@ object RecurrenceUtils {
             Repeat.SEMANAL -> daysBetween(anchor, day) % 7 == 0L
             Repeat.MENSUAL -> sameDayOfMonth(anchor, day)
             Repeat.ANUAL -> sameMonthAndDay(anchor, day)
+            Repeat.DIAS_SEMANA -> matchesWeekDay(item.repeatDays, day)
         }
+    }
+
+    /** ¿[day] cae en uno de los días marcados en la máscara? */
+    private fun matchesWeekDay(mask: Int, day: Long): Boolean {
+        if (mask == WeekDays.NONE) return false
+        val calendar = Calendar.getInstance().apply { timeInMillis = day }
+        return WeekDays.isSelected(mask, WeekDays.bitIndexOf(calendar.get(Calendar.DAY_OF_WEEK)))
     }
 
     /** Próxima fecha de ocurrencia >= [from]. Null si el item no tiene fecha asignada. */
     fun nextOccurrenceAtOrAfter(item: Item, from: Long): Long? {
         val anchor = item.date ?: return null
+
+        // DIAS_SEMANA va aparte porque, a diferencia del resto, el ancla NO es
+        // necesariamente una ocurrencia: el item puede crearse un martes con
+        // lunes/miércoles/viernes elegidos. Se avanza día a día hasta el primero
+        // que coincida (como mucho 7 intentos).
+        if (item.repeat == Repeat.DIAS_SEMANA) {
+            if (item.repeatDays == WeekDays.NONE) return null
+            var candidate = if (anchor >= from) anchor else from
+            repeat(7) {
+                if (matchesWeekDay(item.repeatDays, candidate)) return candidate
+                candidate = DateTimeUtils.addDays(candidate, 1)
+            }
+            return null
+        }
+
         if (anchor >= from) return anchor
         if (item.repeat == Repeat.NINGUNO) return null
 
@@ -66,6 +90,9 @@ object RecurrenceUtils {
                 } while (anchorDay > calendar.getActualMaximum(Calendar.DAY_OF_MONTH))
                 calendar.set(Calendar.DAY_OF_MONTH, anchorDay)
             }
+            // DIAS_SEMANA se resuelve antes de llegar acá; avanzar un día es la
+            // interpretación segura por si alguna vez llegara.
+            Repeat.DIAS_SEMANA -> calendar.add(Calendar.DAY_OF_MONTH, 1)
             Repeat.NINGUNO -> Unit
         }
         return DateTimeUtils.startOfDay(calendar.timeInMillis)
