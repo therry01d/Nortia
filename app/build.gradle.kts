@@ -26,6 +26,25 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
+    signingConfigs {
+        create("nortia") {
+            // Keystore fija versionada en el repo. Antes se firmaba con la de
+            // debug, que Gradle genera de cero en cada runner de CI: como la firma
+            // cambiaba en cada build, Android rechazaba actualizar y obligaba a
+            // desinstalar (perdiendo todos los datos). Con una clave estable las
+            // actualizaciones se instalan encima y la agenda se conserva.
+            //
+            // La contraseña está a la vista a propósito: es una app personal que se
+            // instala por fuera de Google Play. No uses esta keystore si algún día
+            // la publicás en una tienda; ahí hay que generar una privada y guardarla
+            // fuera del repositorio.
+            storeFile = file("nortia-release.jks")
+            storePassword = "nortia2026"
+            keyAlias = "nortia"
+            keyPassword = "nortia2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -33,9 +52,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Firmado con la keystore de debug para poder instalar el release
-            // directo sin gestionar una keystore propia. No sirve para Play Store.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("nortia")
         }
     }
 
