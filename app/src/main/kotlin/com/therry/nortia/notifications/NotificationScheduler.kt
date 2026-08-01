@@ -24,6 +24,9 @@ object NotificationScheduler {
     /** Cuánto se pospone un recordatorio al tocar "Posponer". Fuente única de verdad. */
     const val SNOOZE_MILLIS = 10 * 60 * 1000L
 
+    /** Margen mínimo para un aviso "ya mismo", para no programar en el instante exacto. */
+    private const val IMMEDIATE_DELAY_MILLIS = 3_000L
+
     /**
      * Momento exacto del disparo: fecha+hora de la próxima ocurrencia menos el
      * aviso previo. Null si no hay ocurrencia futura.
@@ -55,13 +58,38 @@ object NotificationScheduler {
         return null
     }
 
+    /** Momento del evento en sí, sin restarle el aviso previo. */
+    private fun eventTimeMillis(item: Item): Long? {
+        val date = if (item.repeat == Repeat.NINGUNO) {
+            item.date
+        } else {
+            RecurrenceUtils.nextOccurrenceAtOrAfter(item, DateTimeUtils.today())
+        } ?: return null
+        return DateTimeUtils.combineDateAndTime(date, item.time)
+    }
+
     fun schedule(context: Context, item: Item, triggerAtMillisOverride: Long? = null) {
         if (!item.remind || item.done) {
             cancel(context, item)
             return
         }
-        val triggerAtMillis = triggerAtMillisOverride ?: triggerAtMillis(item)
-        if (triggerAtMillis == null || triggerAtMillis <= System.currentTimeMillis()) return
+        val requested = triggerAtMillisOverride ?: triggerAtMillis(item) ?: return
+        val now = System.currentTimeMillis()
+
+        val triggerAtMillis = when {
+            requested > now -> requested
+            // El snooze siempre apunta al futuro; si no, no hay nada que hacer.
+            triggerAtMillisOverride != null -> return
+            else -> {
+                // El aviso previo cayó en el pasado, pero el evento todavía no
+                // llegó: pasa siempre que se crea algo con menos anticipación que
+                // el "avisarme X antes" (ej. evento en 3 min con aviso de 10 min).
+                // Antes se descartaba la alarma en silencio y el recordatorio
+                // nunca sonaba. Ahora se avisa enseguida.
+                val eventTime = eventTimeMillis(item) ?: return
+                if (eventTime > now) now + IMMEDIATE_DELAY_MILLIS else return
+            }
+        }
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val pendingIntent = buildPendingIntent(context, item)
