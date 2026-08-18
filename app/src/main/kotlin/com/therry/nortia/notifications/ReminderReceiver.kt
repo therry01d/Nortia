@@ -158,7 +158,13 @@ class ReminderReceiver : BroadcastReceiver() {
             // para que el diagnóstico de la campana lo pueda explicar.
             Log.w("Nortia", "Alarma disparada pero las notificaciones están desactivadas")
         }
-        manager.notify(itemId, notification)
+        try {
+            manager.notify(itemId, notification)
+        } catch (e: SecurityException) {
+            // El usuario pudo revocar POST_NOTIFICATIONS entre la verificación de
+            // arriba y este punto; no hay nada más que hacer salvo registrarlo.
+            Log.e("Nortia", "Sin permiso para mostrar la notificación", e)
+        }
 
         // Deja la marca para que la pestaña del tipo correspondiente muestre el punto.
         NotificationBadges.mark(context, item.type)
