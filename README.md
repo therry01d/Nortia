@@ -67,13 +67,13 @@ Nortia/
 ## 📋 Roadmap futuro
 
 - [ ] Editar eventos existentes
-- [ ] Notificaciones de eventos
-- [ ] Categorías de eventos
+- [x] Notificaciones de eventos
+- [x] Categorías de eventos
 - [ ] Buscar y filtrar eventos
 - [ ] Exportar eventos (iCal, PDF)
 - [ ] Sincronización en la nube (Firebase)
 - [ ] Soporte para múltiples idiomas
-- [ ] Widget de eventos en la pantalla de inicio
+- [x] Widget de eventos en la pantalla de inicio
 
 ## 📄 Licencia
 

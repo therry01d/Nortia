@@ -1,7 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!--
+        setAlarmClock(), setExact() y setExactAndAllowWhileIdle() exigen permiso de
+        alarma exacta desde Android 12; sin él lanzan SecurityException.
+
+        En Android 13+ se declara USE_EXACT_ALARM, que es un permiso "normal":
+        se concede solo al instalar, sin que el usuario tenga que entrar a
+        "Alarmas y recordatorios". Está reservado a apps de calendario/despertador,
+        que es justamente lo que hace Nortia. En Android 14 SCHEDULE_EXACT_ALARM
+        viene DENEGADO por defecto, así que sin esto los recordatorios caían al
+        camino inexacto, sujeto a las cuotas de App Standby.
+
+        Para Android 12 (API 31-32) sigue haciendo falta SCHEDULE_EXACT_ALARM.
+    -->
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
     <application
+        android:name=".NortiaApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -16,6 +41,60 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".CrashActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Nortia" />
+
+        <activity
+            android:name=".notifications.ReminderFullScreenActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.Nortia" />
+
+        <receiver
+            android:name=".notifications.ReminderReceiver"
+            android:exported="false" />
+
+        <!-- exported=true: el lanzador (otra app) es quien envía APPWIDGET_UPDATE. -->
+        <receiver
+            android:name=".widget.NortiaWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nortia_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".widget.NortiaWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!-- exported=true: BOOT_COMPLETED y MY_PACKAGE_REPLACED los emite el sistema
+             (otro UID). Con exported=false el receiver NO los recibe y los
+             recordatorios no se reprograman tras reiniciar/actualizar. Es seguro:
+             ambos son broadcasts protegidos que solo el sistema puede enviar. -->
+        <receiver
+            android:name=".notifications.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <!-- Cada desbloqueo del teléfono: oportunidad barata y frecuente de
+                     reparar la programación, sin gastar cuota de alarmas. -->
+                <action android:name="android.intent.action.USER_PRESENT" />
+                <!-- El usuario acaba de conceder (o revocar) el permiso de alarmas
+                     exactas: hay que reprogramar para pasar al camino exacto. -->
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

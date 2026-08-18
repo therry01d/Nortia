@@ -27,6 +27,10 @@ out/
 # Keystore files
 *.jks
 *.keystore
+# Excepción: keystore de firma de Nortia. Va versionada a propósito para que
+# todos los builds compartan la misma firma y las actualizaciones se puedan
+# instalar encima sin desinstalar. Es una app personal fuera de Google Play.
+!app/nortia-release.jks
 
 # Google Services
 google-services.json
